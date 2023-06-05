@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use super::vm::Vulkyn;
-use super::vm::Instruction;
+
 
 fn test_file(file : &str) -> PathBuf{
     let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
