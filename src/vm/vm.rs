@@ -6,7 +6,6 @@ use crate::vm::memory::{Word,Memory};
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Program{
     pub instructions : Vec<Instruction>,
-    pub labels : Vec<(String,usize)>,
 }
 
 #[derive(Debug,Clone,Serialize,Deserialize)]
@@ -46,10 +45,10 @@ pub enum Instruction {
     EXIT,
     NOP,
     LABEL,
-    GO(String),
-    GOIF(String),
-    RGOIF(String,Register),
-    //CALL,
+    GO(usize),
+    GOIF(usize),
+    RGOIF(usize,Register),
+    //CALL(usize),
 }
 
 pub enum State {
@@ -151,7 +150,6 @@ pub struct Vulkyn {
     memory : Memory,
     program : Program,
     registers : Registers,
-    labels : HashMap<String,usize>,
 }
 impl Vulkyn {
 
@@ -162,16 +160,11 @@ impl Vulkyn {
             return Err(());
         }
         let program = program.unwrap();
-        let mut labels:HashMap<String, usize> = HashMap::new();
-        for (label,addr) in &program.labels {
-            labels.insert(label.to_owned(), *addr);
-        }
 
         Ok(Self {
             memory:Memory::build(),
             program : program,
             registers : Registers::init(),
-            labels: labels,
         })
     }
 
@@ -279,11 +272,7 @@ impl Vulkyn {
             Instruction::EXIT => {},
             Instruction::LABEL => {},
             Instruction::GO(label)=> {
-                if let Some(addr) = self.labels.get(&label){
-                    self.registers.Ni = Word::U64(*addr);
-                }else {
-                    return State::IllegalInstruction;
-                }
+                self.registers.Ni = Word::U64(label);
             },
             Instruction::GOIF(label) => {
                 let some_word: Result<Word, super::memory::MemoryError> = self.memory.pop();
@@ -292,21 +281,13 @@ impl Vulkyn {
                 }
                 let word = some_word.unwrap();
                 if !word.is_zero() {
-                    if let Some(addr) = self.labels.get(&label){
-                        self.registers.Ni = Word::U64(*addr);
-                    }else {
-                        return State::IllegalInstruction;
-                    }
+                    self.registers.Ni = Word::U64(label);
                 }
             },
             Instruction::RGOIF(label,reg) => {
                 let word = self.registers.get(reg);
                 if !word.is_zero() {
-                    if let Some(addr) = self.labels.get(&label){
-                        self.registers.Ni = Word::U64(*addr);
-                    }else {
-                        return State::IllegalInstruction;
-                    }
+                    self.registers.Ni = Word::U64(label);
                 }
             },
         }

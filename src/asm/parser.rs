@@ -1,4 +1,4 @@
-use std::iter::Peekable;
+use std::{iter::Peekable, collections::HashMap};
 
 use crate::vm::{vm::{Instruction, Register,Either}, memory::Word};
 
@@ -8,7 +8,8 @@ use core::slice::Iter;
 
 pub struct Parser {
     tokens : Vec<Token>,
-    pub labels : Vec<(String,usize)>,
+    labels : HashMap<String,usize>,
+    identifier : Vec<(usize,String)>,
     number_instructions : usize,
 }
 
@@ -17,7 +18,8 @@ impl Parser {
     pub fn init(tokens : Vec<Token>) -> Self {
         Self{
             tokens,
-            labels:Vec::new(),
+            labels:HashMap::new(),
+            identifier:Vec::new(),
             number_instructions:0,
         }
     }
@@ -176,28 +178,52 @@ impl Parser {
                     } 
                 }
                 Token::LABEL(label) => {
-                    self.labels.push((label.to_owned(),self.number_instructions));
+                    self.labels.insert(label.to_owned(),self.number_instructions);
                     res.push(Instruction::LABEL);
                     
                 }
                 Token::GO => {
-                    let some_inst = Parser::rule_go(&mut tokens);
-                    if let Ok(inst) = some_inst {
-                        res.push(inst);
+                    let some_inst = Parser::rule_go(&mut tokens,&self.labels);
+                    if let Ok(either) = some_inst {
+                        match either {
+                            Either::Left(inst) => {
+                                res.push(inst);
+                            }
+                            Either::Right((inst,label)) => {
+                                self.identifier.push((self.number_instructions,label));
+                                res.push(inst);
+                            }
+                        }
                         
                     } 
                 }
                 Token::GOIF => {
-                    let some_inst = Parser::rule_goif(&mut tokens);
-                    if let Ok(inst) = some_inst {
-                        res.push(inst);
+                    let some_inst = Parser::rule_goif(&mut tokens,&self.labels);
+                    if let Ok(either) = some_inst {
+                        match either {
+                            Either::Left(inst) => {
+                                res.push(inst);
+                            }
+                            Either::Right((inst,label)) => {
+                                self.identifier.push((self.number_instructions,label));
+                                res.push(inst);
+                            }
+                        }
                         
                     } 
                 }
                 Token::RGOIF => {
-                    let some_inst = Parser::rule_rgoif(&mut tokens);
-                    if let Ok(inst) = some_inst {
-                        res.push(inst);
+                    let some_inst = Parser::rule_rgoif(&mut tokens,&self.labels);
+                    if let Ok(either) = some_inst {
+                        match either {
+                            Either::Left(inst) => {
+                                res.push(inst);
+                            }
+                            Either::Right((inst,label)) => {
+                                self.identifier.push((self.number_instructions,label));
+                                res.push(inst);
+                            }
+                        }
                         
                     } 
                 }
@@ -210,6 +236,36 @@ impl Parser {
             }
             self.number_instructions += 1;
         }
+        for (index,label) in &self.identifier {
+            if let Some(addr) = self.labels.get(label){
+                match res.get_mut(*index) {
+                    Some(inst) => {
+                        match inst {
+                            Instruction::GO(_) => {
+                                //dbg!((index,label));
+                                *inst = Instruction::GO(*addr);
+                            }
+                            Instruction::GOIF(_) => {
+                                *inst = Instruction::GOIF(*addr);
+                            }
+                            Instruction::RGOIF(_,reg) => {
+                                *inst = Instruction::RGOIF(*addr,*reg);
+                            }
+                            _ => {
+                                dbg!((index,label));
+                                return Err(());
+                            }
+                        }
+                    }
+                    None => {
+                        return Err(());
+                    }
+                }
+            }else {
+                return Err(());
+            }
+        }
+
         return Ok(res);
     }
     fn rule_float(tokens : &mut Peekable<Iter<Token>>) -> Result<f64,()>{
@@ -458,23 +514,32 @@ impl Parser {
         }
         return Err(());
     }
-    fn rule_go(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
+    fn rule_go(tokens : &mut Peekable<Iter<Token>>,labels : &HashMap<String,usize>) -> Result<Either<Instruction,(Instruction,String)>,()>{
         let some_label = Parser::rule_label(tokens);
         if some_label.is_err(){
             return Err(());
         }
         let label = some_label.unwrap();
-        return Ok(Instruction::GO(label));
+        dbg!(&labels);
+        if let Some(addr) = labels.get(&label) {
+            return Ok(Either::Left(Instruction::GO(*addr)));
+        }else {
+            return Ok(Either::Right((Instruction::GO(0),label.to_owned())))
+        }
     }
-    fn rule_goif(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
+    fn rule_goif(tokens : &mut Peekable<Iter<Token>>,labels : &HashMap<String,usize>) -> Result<Either<Instruction,(Instruction,String)>,()>{
         let some_label = Parser::rule_label(tokens);
         if some_label.is_err(){
             return Err(());
         }
         let label = some_label.unwrap();
-        return Ok(Instruction::GOIF(label));
+        if let Some(addr) = labels.get(&label) {
+            return Ok(Either::Left(Instruction::GOIF(*addr)));
+        }else {
+            return Ok(Either::Right((Instruction::GOIF(0),label.to_owned())))
+        }
     }
-    fn rule_rgoif(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
+    fn rule_rgoif(tokens : &mut Peekable<Iter<Token>>,labels : &HashMap<String,usize>) -> Result<Either<Instruction,(Instruction,String)>,()>{
         let some_label = Parser::rule_label(tokens);
         if some_label.is_err(){
             return Err(());
@@ -485,6 +550,10 @@ impl Parser {
             return Err(());
         }
         let reg = some_reg.unwrap();
-        return Ok(Instruction::RGOIF(label,reg));
+        if let Some(addr) = labels.get(&label) {
+            return Ok(Either::Left(Instruction::RGOIF(*addr,reg)));
+        }else {
+            return Ok(Either::Right((Instruction::RGOIF(0,reg),label.to_owned())))
+        }
     }
 }
