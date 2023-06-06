@@ -161,7 +161,6 @@ impl Parser {
                     Some(inst) => {
                         match inst {
                             Instruction::GO(_) => {
-                                //dbg!((index,label));
                                 *inst = Instruction::GO(*addr);
                             }
                             Instruction::GOIF(_) => {
@@ -171,7 +170,6 @@ impl Parser {
                                 *inst = Instruction::RGOIF(*addr,*reg);
                             }
                             _ => {
-                                dbg!((index,label));
                                 return Err(());
                             }
                         }
@@ -337,6 +335,9 @@ impl Parser {
             Token::OR => {
                 return Ok(Instruction::OR);
             }
+            Token::NOT => {
+                return Ok(Instruction::NOT);
+            }
             /* FLOW */
             Token::EXIT => {
                 return Ok(Instruction::EXIT);
@@ -349,15 +350,14 @@ impl Parser {
             }
         }
     }
+
     fn rule_unary_either_param(token : &Token,tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
-        let some_x = Parser::rule_either(tokens);
-        if some_x.is_err(){
-            return Err(());
-        }
-        let x = some_x.unwrap();
         match token {
             /* OPERATION */
             Token::RNOT => {
+                let Ok(x) = Parser::rule_either(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RNOT(x));
             }
             _ => {
@@ -365,7 +365,7 @@ impl Parser {
             }
         }
     }
-    fn rule_binary_either_param(token : &Token,tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
+    fn binary_either_param(tokens : &mut Peekable<Iter<Token>>) -> Result<(Either<Word,Register>,Either<Word,Register>),()>{
         let some_x = Parser::rule_either(tokens);
         if some_x.is_err(){
             return Err(());
@@ -376,67 +376,125 @@ impl Parser {
         }
         let x = some_x.unwrap();
         let y = some_y.unwrap();
+        return Ok((x,y));
+    }
+    fn rule_binary_either_param(token : &Token,tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
         match token {
             /* OPERATION */
             Token::RADD => {
+                let Ok((x,y)) = Parser::binary_either_param( tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RADD(x,y));
             }
             Token::RMINUS => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RMINUS(x,y));
             }
             Token::RMUL => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RMUL(x,y));
             }
             Token::RDIV => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RDIV(x,y));
             }
             Token::RMOD => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RMOD(x,y));
             }
 
             Token::RBAND => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RBAND(x,y));
             }
             Token::RBOR => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RBOR(x,y));
             }
             Token::RBXOR => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RBXOR(x,y));
             }
             Token::RRSHIFT => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RRSHIFT(x,y));
             }
             Token::RLSHIFT => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RLSHIFT(x,y));
             }
             Token::RLESS => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RLESS(x,y));
             }
             Token::RELESS => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RELESS(x,y));
             }
             Token::RGREAT => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RGREAT(x,y));
             }
             Token::REGREAT => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::REGREAT(x,y));
             }
             Token::REQUAL => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::REQUAL(x,y));
             }
             Token::RDIFF => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RDIFF(x,y));
             }
             Token::RAND => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::RAND(x,y));
             }
             Token::ROR => {
+                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
+                    return Err(());
+                };
                 return Ok(Instruction::ROR(x,y));
             }
             _ => {
                 return Err(())
             }
         }
+
     }
 
     fn rule_push(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
@@ -503,7 +561,6 @@ impl Parser {
             if word.is_err(){
                 return Err(());
             }
-            tokens.next();
             return Ok(Either::Left(word.unwrap()));
         }
         tokens.next();
