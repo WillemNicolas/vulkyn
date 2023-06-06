@@ -141,7 +141,11 @@ impl Parser {
                 _ => {
                     if let Ok(inst) = Parser::rule_binary_either_param(peek, &mut tokens) {
                         res.push(inst);
-                    }else {
+
+                    }else if let Ok(inst) = Parser::rule_unary_either_param(peek, &mut tokens) {
+                        res.push(inst);
+                    }
+                    else {
                         let Ok(inst) = Parser::rule_no_param(peek) else {
                             return Err(());
                         };
@@ -345,7 +349,22 @@ impl Parser {
             }
         }
     }
-     
+    fn rule_unary_either_param(token : &Token,tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
+        let some_x = Parser::rule_either(tokens);
+        if some_x.is_err(){
+            return Err(());
+        }
+        let x = some_x.unwrap();
+        match token {
+            /* OPERATION */
+            Token::RNOT => {
+                return Ok(Instruction::RNOT(x));
+            }
+            _ => {
+                return Err(())
+            }
+        }
+    }
     fn rule_binary_either_param(token : &Token,tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
         let some_x = Parser::rule_either(tokens);
         if some_x.is_err(){
