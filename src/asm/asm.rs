@@ -55,7 +55,6 @@ impl Vasm {
         let program = Program{
             instructions : instructions,
         };
-        dbg!(&program);
         let file = File::create(&self.out_path).unwrap();
         let res = bincode::serialize_into(file, &program);
         if res.is_err(){

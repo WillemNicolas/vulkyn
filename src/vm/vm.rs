@@ -28,17 +28,70 @@ pub enum Instruction {
     WRITE(Word,Register),
 
     /* OPERATOR */
+    // +
     ADD,
-    MINUS,
-    MUL,
-    DIV,
-    MOD,
-
     RADD(Either<Word,Register>,Either<Word,Register>),
+    // -
+    MINUS,
     RMINUS(Either<Word,Register>,Either<Word,Register>),
+    // *
+    MUL,
     RMUL(Either<Word,Register>,Either<Word,Register>),
+    // /
+    DIV,
     RDIV(Either<Word,Register>,Either<Word,Register>),
+    // % 
+    MOD,
     RMOD(Either<Word,Register>,Either<Word,Register>),
+
+    // &
+    BAND,
+    RBAND(Either<Word,Register>,Either<Word,Register>),
+    // |
+    BOR,
+    RBOR(Either<Word,Register>,Either<Word,Register>),
+    // ^
+    BXOR,
+    RBXOR(Either<Word,Register>,Either<Word,Register>),
+    // >>
+    RSHIFT,
+    RRSHIFT(Either<Word,Register>,Either<Word,Register>),
+    // <<
+    LSHIFT,
+    RLSHIFT(Either<Word,Register>,Either<Word,Register>),
+
+
+    // == 
+    EQUAL,
+    REQUAL(Either<Word,Register>,Either<Word,Register>),
+    // !=
+    DIFF,
+    RDIFF(Either<Word,Register>,Either<Word,Register>),
+    // ! 
+    NOT,
+    RNOT(Either<Word,Register>),
+    // &&
+    AND,
+    RAND(Either<Word,Register>,Either<Word,Register>),
+    // ||
+    OR,
+    ROR(Either<Word,Register>,Either<Word,Register>),
+
+    // <
+    LESS,
+    RLESS(Either<Word,Register>,Either<Word,Register>),
+    // <=
+    ELESS,
+    RELESS(Either<Word,Register>,Either<Word,Register>),
+    // >
+    GREAT,
+    RGREAT(Either<Word,Register>,Either<Word,Register>),
+    // >=
+    EGREAT,
+    REGREAT(Either<Word,Register>,Either<Word,Register>),
+
+
+
 
 
     /* FLOW */
@@ -175,6 +228,7 @@ impl Vulkyn {
                 Word::I64(w) => w as usize,
                 Word::F64(w) => w as usize,
                 Word::CHAR(w) => w as usize,
+                Word::BOOL(w) => w as usize,
             }
         };
         let some_instruction = self.program.instructions.get(word);
@@ -188,14 +242,7 @@ impl Vulkyn {
         return Some(instruction.clone());
     }
     pub fn next_instruction(&mut self) {
-        let word = {
-            match self.registers.Ni{
-                Word::U64(w) => Word::U64(w+1),
-                Word::I64(w) => Word::I64(w+1),
-                Word::F64(w) => Word::F64(w+1.0),
-                Word::CHAR(w) => Word::CHAR((w as u8 +1) as char),
-            }
-        };
+        let word =  self.registers.Ni + Word::U64(1);
         self.registers.Ni = word;
     }
     pub fn exec(&mut self) {
@@ -220,12 +267,42 @@ impl Vulkyn {
             Instruction::ADD | Instruction::MINUS | Instruction::MUL | Instruction::DIV | Instruction::MOD=> {
                 return self.operation(instruction);
             }
+            Instruction::BAND | Instruction::BOR | Instruction::BXOR | Instruction::LSHIFT | Instruction::RSHIFT => {
+                return self.bitewise_operation(instruction);
+            }
+            Instruction::RBAND(_,_) | Instruction::RBOR(_,_) | Instruction::RBXOR(_,_) | Instruction::RLSHIFT(_,_) | Instruction::RRSHIFT(_,_) => {
+                return self.r_bitewise_operation(instruction);
+            }
             Instruction::RADD(_,_) 
                 | Instruction::RMINUS(_,_) 
                 | Instruction::RMUL(_,_) 
                 | Instruction::RDIV(_,_)
                 | Instruction::RMOD(_,_) => {
                 return self.r_operation(instruction);
+            }
+            Instruction::AND 
+            | Instruction::OR 
+            | Instruction::EQUAL 
+            | Instruction::NOT 
+            | Instruction::DIFF
+            | Instruction::LESS
+            | Instruction::GREAT
+            | Instruction::ELESS
+            | Instruction::EGREAT
+             => {
+                return self.boolean_operation(instruction);
+            }
+            Instruction::RAND(_,_) 
+                | Instruction::ROR(_,_) 
+                | Instruction::RLESS(_,_) 
+                | Instruction::RGREAT(_,_)
+                | Instruction::RELESS(_,_) 
+                | Instruction::REGREAT(_,_)
+                | Instruction::REQUAL(_,_)
+                | Instruction::RDIFF(_,_)
+                | Instruction::RNOT(_)
+                => {
+                return self.r_boolean_operation(instruction);
             }
             Instruction::PUSH(word) => {
                 self.memory.push(word);
@@ -295,68 +372,36 @@ impl Vulkyn {
     }
 
     fn operation(&mut self,instruction : Instruction) -> State{
+        let some_x = self.memory.pop();
+        if some_x.is_err() {
+            return State::StackUnderflow
+        }
+        let some_y = self.memory.pop();
+        if some_y.is_err() {
+            return State::StackUnderflow
+        }
         match instruction {
             Instruction::ADD => {
-                let some_x = self.memory.pop();
-                if some_x.is_err() {
-                    return State::StackUnderflow
-                }
-                let some_y = self.memory.pop();
-                if some_y.is_err() {
-                    return State::StackUnderflow
-                }
                 let result = some_x.unwrap()  + some_y.unwrap() ;
                 self.memory.push(result);
                 return State::OK
             }
             Instruction::MINUS => {
-                let some_x = self.memory.pop();
-                if some_x.is_err() {
-                    return State::StackUnderflow
-                }
-                let some_y = self.memory.pop();
-                if some_y.is_err() {
-                    return State::StackUnderflow
-                }
                 let result = some_x.unwrap()  - some_y.unwrap() ;
                 self.memory.push(result);
                 return State::OK
             }
             Instruction::MUL => {
-                let some_x = self.memory.pop();
-                if some_x.is_err() {
-                    return State::StackUnderflow
-                }
-                let some_y = self.memory.pop();
-                if some_y.is_err() {
-                    return State::StackUnderflow
-                }
                 let result = some_x.unwrap()  * some_y.unwrap() ;
                 self.memory.push(result);
                 return State::OK
             }
             Instruction::MOD => {
-                let some_x = self.memory.pop();
-                if some_x.is_err() {
-                    return State::StackUnderflow
-                }
-                let some_y = self.memory.pop();
-                if some_y.is_err() {
-                    return State::StackUnderflow
-                }
                 let result = some_x.unwrap()  % some_y.unwrap() ;
                 self.memory.push(result);
                 return State::OK
             }
             Instruction::DIV => {
-                let some_x = self.memory.pop();
-                if some_x.is_err() {
-                    return State::StackUnderflow
-                }
-                let some_y = self.memory.pop();
-                if some_y.is_err() {
-                    return State::StackUnderflow
-                }
                 let y = some_y.unwrap() ;
                 if y.is_zero() {
                     return State::DivisionZero;
@@ -374,6 +419,216 @@ impl Vulkyn {
             Either::Left(word) => word,
             Either::Right(reg) => self.registers.get(reg)
         }
+    }
+    fn bitewise_operation(&mut self,instruction : Instruction) -> State{
+        let some_x = self.memory.pop();
+        if some_x.is_err() {
+            return State::StackUnderflow
+        }
+        let some_y = self.memory.pop();
+        if some_y.is_err() {
+            return State::StackUnderflow
+        }
+        match instruction {
+            Instruction::BAND  => {
+                let result = some_x.unwrap() & some_y.unwrap() ;
+                self.memory.push(result);
+                return State::OK
+            }
+            Instruction::BOR  => {
+                let result = some_x.unwrap() | some_y.unwrap() ;
+                self.memory.push(result);
+                return State::OK
+            }
+            Instruction::BXOR  => {
+                let result = some_x.unwrap() ^ some_y.unwrap() ;
+                self.memory.push(result);
+                return State::OK
+            }
+            Instruction::LSHIFT  => {
+                let result = some_x.unwrap() << some_y.unwrap() ;
+                self.memory.push(result);
+                return State::OK
+            }
+            Instruction::RSHIFT => {
+                let result = some_x.unwrap() >> some_y.unwrap() ;
+                self.memory.push(result);
+                return State::OK
+            }
+            _ => {}
+        }
+        return State::OK;
+    }
+    fn r_bitewise_operation(&mut self,instruction : Instruction) -> State{
+        match instruction {
+            Instruction::RBAND(e1,e2)  => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x & y ;
+                self.memory.push(result);
+                return State::OK
+            }
+            Instruction::RBOR(e1,e2)  => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x | y ;
+                self.memory.push(result);
+                return State::OK
+            }
+            Instruction::RBXOR(e1,e2)  => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x ^ y ;
+                self.memory.push(result);
+                return State::OK
+            }
+            Instruction::RLSHIFT(e1,e2)  => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x << y ;
+                self.memory.push(result);
+                return State::OK
+            }
+            Instruction::RRSHIFT(e1,e2) => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x >> y ;
+                self.memory.push(result);
+                return State::OK
+            }
+            _ => {}
+        }
+        return State::OK;
+    }
+    fn boolean_operation(&mut self,instruction : Instruction) -> State{
+        let some_x = self.memory.pop();
+        if some_x.is_err() {
+            return State::StackUnderflow
+        }
+        let x = some_x.unwrap();
+        match instruction {
+            Instruction::NOT => {
+                self.memory.push(x.neg());
+                return State::OK;
+            }
+            _ => {}
+        }
+        let some_y = self.memory.pop();
+        if some_y.is_err() {
+            return State::StackUnderflow
+        }
+        let y = some_y.unwrap();
+        match instruction {
+            Instruction::AND => {
+                let result = x.and(&y);
+                self.memory.push(result);
+                return State::OK;
+            }
+            Instruction::OR  => {
+                let result = x.or(&y);
+                self.memory.push(result);
+                return State::OK;
+            }
+            Instruction::LESS  => {
+                let result = x < y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            Instruction::GREAT => {
+                let result = x > y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            Instruction::ELESS  => {
+                let result = x <= y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            Instruction::EGREAT => {
+                let result = x >= y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            Instruction::EQUAL => {
+                let result = x == y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            Instruction::DIFF => {
+                let result = x != y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            _ => {}
+        }
+        return State::OK;
+    }
+    fn r_boolean_operation(&mut self,instruction : Instruction) -> State{
+        match instruction {
+            Instruction::RAND(e1,e2) => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x.and(&y);
+                self.memory.push(result);
+                return State::OK;
+            }
+            | Instruction::ROR(e1,e2)  => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x.or(&y);
+                self.memory.push(result);
+                return State::OK;
+            }
+            | Instruction::RLESS(e1,e2)  => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x < y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            | Instruction::RGREAT(e1,e2) => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x > y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            | Instruction::RELESS(e1,e2)  => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x <= y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            | Instruction::REGREAT(e1,e2) => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x >= y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            | Instruction::REQUAL(e1,e2) => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x == y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            | Instruction::RDIFF(e1,e2) => {
+                let x = self.get_either(e1);
+                let y = self.get_either(e2);
+                let result = x != y;
+                self.memory.push(Word::BOOL(result));
+                return State::OK;
+            }
+            | Instruction::RNOT(e) => {
+                let x = self.get_either(e);
+                self.memory.push(x.neg());
+                return State::OK;
+            }
+            _ => {}
+        }
+        return State::OK;
     }
     fn r_operation(&mut self,instruction : Instruction) -> State{
         match instruction {
