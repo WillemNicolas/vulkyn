@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use std::ops::{BitAnd, Add, Sub, Mul, Div, Rem, BitOr, Shl, Shr, BitXor};
+use std::{ops::{BitAnd, Add, Sub, Mul, Div, Rem, BitOr, Shl, Shr, BitXor}, hash::{Hash, Hasher}};
 
 
 #[derive(Debug,Clone,Copy,Serialize,Deserialize)]
@@ -68,6 +68,34 @@ impl PartialOrd for Word {
     }
 }
 
+impl Eq for Word{}
+
+impl Hash for Word {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Word::U64(w) => {
+                state.write_u8(1);
+                w.hash(state);
+            }
+            Word::I64(w) => {
+                state.write_u8(2);
+                w.hash(state);
+            }
+            Word::F64(w) => {
+                state.write_u8(4);
+                &(*w as u64).hash(state);
+            }
+            Word::CHAR(w) => {
+                state.write_u8(8);
+                w.hash(state);
+            }
+            Word::BOOL(w) => {
+                state.write_u8(16);
+                w.hash(state);
+            }
+        }
+    }
+}
 impl Add for Word{
     type Output = Self;
 

@@ -1,4 +1,6 @@
 
+use std::collections::{HashSet, HashMap};
+
 use serde::{Serialize, Deserialize};
 
 use super::{word::Word, register::{Registers, Register}};
@@ -14,17 +16,17 @@ pub enum MemoryError {
 #[derive(Debug)]
 pub struct Memory {
     stack : Vec<Word>,
-    heap : Vec<Word>,
+    heap : HashMap<Word,Box<Vec<Word>>>,
     pub stack_size : usize,
     heap_size : usize,
     pub registers : Registers,
 }
 
-impl Memory {
+impl<'vm> Memory {
     pub fn build() -> Self {
         Self {
             stack : Vec::new(),
-            heap : Vec::new(),
+            heap : HashMap::new(),
             stack_size : 0,
             heap_size : 0,
             registers : Registers::init(),
@@ -102,19 +104,29 @@ impl Memory {
     }
 
     /* HEAP ACCESS */
-    pub fn read(&mut self) -> Result<Word,MemoryError> {
-        Err(MemoryError::HeapSegmentationFault)
+    pub fn read(&mut self,idx:Word) -> Result<&Box<Vec<Word>>,MemoryError> {
+        let Some(word) = self.heap.get(&idx) else {
+            return Err(MemoryError::HeapSegmentationFault);
+        };
+        return Ok(word);
     }
 
-    pub fn write(&mut self,word : Word) -> Result<Word,MemoryError> {
-        Err(MemoryError::HeapSegmentationFault)
+    pub fn write(&mut self,word : Word,idx : Word) -> Result<Word,MemoryError> {
+        if let None = self.heap.insert(idx, Box::new(vec![word;1])) {
+            return Err(MemoryError::HeapSegmentationFault);
+        }
+        return Ok(idx)
     }
 
-    pub fn alloc(&mut self,size:usize)  -> Option<MemoryError>{
-        Some(MemoryError::HeapSegmentationFault)
+    pub fn alloc(&mut self,size:usize)  -> Result<Word,MemoryError>{
+        let words = Box::new(vec![Word::init(); size]);
+        let idx = Word::U64(self.heap_size);
+        self.heap.insert(idx,words);
+        self.heap_size += 1;
+        return Ok(idx);
     }
 
-    pub fn free(&mut self,pointer:usize,size:usize)  -> Option<MemoryError>{
-        Some(MemoryError::HeapSegmentationFault)
+    pub fn free(&mut self,idx : Word)  -> Option<Box<Vec<Word>>> {
+        return self.heap.remove(&idx)
     }
 }
