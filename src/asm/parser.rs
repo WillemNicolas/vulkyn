@@ -1,8 +1,8 @@
 use std::{iter::Peekable, collections::HashMap};
 
-use crate::vm::{vm::{Instruction, Register,Either}, memory::Word};
+use crate::vm::{vm::{Instruction,Either}, word::Word, register::Register};
 
-use super::lexer::Token;
+use super::{lexer::Token, token::TokenType};
 
 use core::slice::Iter;
 
@@ -11,6 +11,11 @@ pub struct Parser {
     labels : HashMap<String,usize>,
     identifier : Vec<(usize,String)>,
     number_instructions : usize,
+}
+#[derive(Debug)]
+pub enum ParserError {
+    RuleError(usize,usize),
+    EmptyError
 }
 
 impl Parser {
@@ -23,16 +28,16 @@ impl Parser {
             number_instructions:0,
         }
     }
-
-    pub fn run(&mut self) -> Result<Vec<Instruction>,()>{
+    
+    pub fn run(&mut self) -> Result<Vec<Instruction>,ParserError>{
         let mut cursor :usize= 0;
         if self.tokens.is_empty() {
-            return Err(());
+            return Err(ParserError::EmptyError);
         }
 
         return self.parse();
     }
-    fn parse(&mut self) -> Result<Vec<Instruction>,()>{
+    fn parse(&mut self) -> Result<Vec<Instruction>,ParserError>{
         let mut tokens = self.tokens.iter().peekable();
         let mut res : Vec<Instruction> = Vec::new();
         loop {
@@ -41,43 +46,57 @@ impl Parser {
                 break;
             }
             let peek = peek.unwrap();
-            match peek {
-                Token::PUSH => {
+            match &peek.token {
+                TokenType::PUSH => {
                     let some_inst = Parser::rule_push(&mut tokens);
                     if let Ok(inst) = some_inst {
                         res.push(inst);
                         
                     } 
                 }
-                Token::SCOPY => {
+                TokenType::SCOPY => {
                     let some_inst = Parser::rule_scopy(&mut tokens);
                     if let Ok(inst) = some_inst {
                         res.push(inst);
                         
                     } 
                 }
-                Token::SMOVE => {
+                TokenType::SMOVE => {
                     let some_inst = Parser::rule_smove(&mut tokens);
                     if let Ok(inst) = some_inst {
                         res.push(inst);
                         
                     } 
                 }
-                Token::RCOPY => {
+                TokenType::RCOPY => {
                     let some_inst = Parser::rule_rcopy(&mut tokens);
                     if let Ok(inst) = some_inst {
                         res.push(inst);
                         
                     } 
                 }
-                Token::RMOVE => {
+                TokenType::RMOVE => {
                     let some_inst = Parser::rule_rmove(&mut tokens);
                     if let Ok(inst) = some_inst {
                         res.push(inst);
                         
                     } 
                 }
-                Token::WRITE => {
+                TokenType::WRITE => {
+                    let some_inst = Parser::rule_sload(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                }
+                TokenType::SLOAD => {
+                    let some_inst = Parser::rule_sloadb(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                }
+                TokenType::SLOADB => {
                     let some_inst = Parser::rule_write(&mut tokens);
                     if let Ok(inst) = some_inst {
                         res.push(inst);
@@ -85,12 +104,12 @@ impl Parser {
                     } 
                 }
                 /* FLOW */
-                Token::LABEL(label) => {
+                TokenType::LABEL(label) => {
                     self.labels.insert(label.to_owned(),self.number_instructions);
                     res.push(Instruction::LABEL);
                     
                 }
-                Token::GO => {
+                TokenType::GO => {
                     let some_inst = Parser::rule_go(&mut tokens,&self.labels);
                     if let Ok(either) = some_inst {
                         match either {
@@ -105,7 +124,7 @@ impl Parser {
                         
                     } 
                 }
-                Token::GOIF => {
+                TokenType::GOIF => {
                     let some_inst = Parser::rule_goif(&mut tokens,&self.labels);
                     if let Ok(either) = some_inst {
                         match either {
@@ -120,7 +139,7 @@ impl Parser {
                         
                     } 
                 }
-                Token::RGOIF => {
+                TokenType::RGOIF => {
                     let some_inst = Parser::rule_rgoif(&mut tokens,&self.labels);
                     if let Ok(either) = some_inst {
                         match either {
@@ -135,7 +154,61 @@ impl Parser {
                         
                     } 
                 }
-                Token::EOF => {
+                TokenType::CALL => {
+                    let some_inst = Parser::rule_call(&mut tokens,&self.labels);
+                    if let Ok(either) = some_inst {
+                        match either {
+                            Either::Left(inst) => {
+                                res.push(inst);
+                            }
+                            Either::Right((inst,label)) => {
+                                self.identifier.push((self.number_instructions,label));
+                                res.push(inst);
+                            }
+                        }
+                        
+                    } 
+                }
+                TokenType::CALLP => {
+                    let some_inst = Parser::rule_callp(&mut tokens,&self.labels);
+                    if let Ok(either) = some_inst {
+                        match either {
+                            Either::Left(inst) => {
+                                res.push(inst);
+                            }
+                            Either::Right((inst,label)) => {
+                                self.identifier.push((self.number_instructions,label));
+                                res.push(inst);
+                            }
+                        }
+                        
+                    } 
+                }
+                TokenType::SCALLP => {
+                    let some_inst = Parser::rule_scallp(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                    } 
+                }
+                TokenType::RCALL => {
+                    let some_inst = Parser::rule_rcall(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                    } 
+                }
+                TokenType::RCALLP => {
+                    let some_inst = Parser::rule_rcallp(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                    } 
+                }
+                TokenType::RET => {
+                    let some_inst = Parser::rule_ret(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                    } 
+                }
+                TokenType::EOF => {
                     break;
                 }
                 _ => {
@@ -146,9 +219,7 @@ impl Parser {
                         res.push(inst);
                     }
                     else {
-                        let Ok(inst) = Parser::rule_no_param(peek) else {
-                            return Err(());
-                        };
+                        let inst = Parser::rule_no_param(peek)?;
                         res.push(inst);
                     }
                 }
@@ -169,52 +240,92 @@ impl Parser {
                             Instruction::RGOIF(_,reg) => {
                                 *inst = Instruction::RGOIF(*addr,*reg);
                             }
+                            Instruction::CALL(_) => {
+                                *inst = Instruction::CALL(*addr);
+                            }
+                            Instruction::CALLP(_,size) => {
+                                *inst = Instruction::CALLP(*addr,*size);
+                            }
                             _ => {
-                                return Err(());
+                                return Err(ParserError::EmptyError);
                             }
                         }
                     }
                     None => {
-                        return Err(());
+                        return Err(ParserError::EmptyError);
                     }
                 }
             }else {
-                return Err(());
+                return Err(ParserError::EmptyError);
             }
         }
 
         return Ok(res);
     }
-    fn rule_float(tokens : &mut Peekable<Iter<Token>>) -> Result<f64,()>{
-        if let Some(Token::FLOAT(num)) = tokens.peek() {
-            tokens.next();
-            return Ok(*num);
+    fn rule_float(tokens : &mut Peekable<Iter<Token>>) -> Result<f64,ParserError>{
+        if let Some(token) = tokens.peek() {
+            if let TokenType::FLOAT(num) = token.token {
+                tokens.next();
+                return Ok(num);
+            }
+            return Err(ParserError::RuleError(token.line, token.column))
         }
-        return Err(());
+        return Err(ParserError::EmptyError);
     }
-    fn rule_char(tokens : &mut Peekable<Iter<Token>>) -> Result<char,()>{
-        if let Some(Token::CHAR(char)) = tokens.peek() {
-            tokens.next();
-            return Ok(*char);
+    fn rule_char(tokens : &mut Peekable<Iter<Token>>) -> Result<char,ParserError>{
+        if let Some(token) = tokens.peek() {
+            if let TokenType::CHAR(num) = token.token {
+                tokens.next();
+                return Ok(num);
+            }
+            return Err(ParserError::RuleError(token.line, token.column))
         }
-        return Err(());
+        return Err(ParserError::EmptyError);
     }
-    fn rule_int(tokens : &mut Peekable<Iter<Token>>) -> Result<isize,()>{
-        if let Some(Token::INT(num)) = tokens.peek() {
-            tokens.next();
-            return Ok(*num);
+    fn rule_int(tokens : &mut Peekable<Iter<Token>>) -> Result<isize,ParserError>{
+        if let Some(token) = tokens.peek() {
+            if let TokenType::INT(num) = token.token {
+                tokens.next();
+                return Ok(num);
+            }
+            return Err(ParserError::RuleError(token.line, token.column))
         }
-        return Err(());
+        return Err(ParserError::EmptyError);
     }
-    fn rule_uint(tokens : &mut Peekable<Iter<Token>>) -> Result<usize,()>{
-        if let Some(Token::UINT(num)) = tokens.peek() {
-            tokens.next();
-            return Ok(*num);
+    fn rule_uint(tokens : &mut Peekable<Iter<Token>>) -> Result<usize,ParserError>{
+        if let Some(token) = tokens.peek() {
+            if let TokenType::UINT(num) = token.token {
+                tokens.next();
+                return Ok(num);
+            }
+            return Err(ParserError::RuleError(token.line, token.column))
         }
-        return Err(());
+        return Err(ParserError::EmptyError);
     }
+    fn rule_addr_op(tokens : &mut Peekable<Iter<Token>>) -> Result<(Register,isize),ParserError>{
+        let Some(token) = tokens.peek() else {
+            return Err(ParserError::EmptyError);
+        };
+        if let TokenType::O_SBR = token.token{
+            tokens.next();
+        }else {
+            return Err(ParserError::RuleError(token.line, token.column));
+        }
+        let reg = Parser::rule_reg(tokens)?;
 
-    fn rule_word(tokens : &mut Peekable<Iter<Token>>) -> Result<Word,()>{
+        let Some(token) = tokens.peek() else {
+            return Err(ParserError::EmptyError);
+        };
+        if let TokenType::BAR = token.token{
+            tokens.next();
+        }else {
+            return Err(ParserError::RuleError(token.line, token.column));
+        }
+
+        let num = Parser::rule_int(tokens)?;
+        return Ok((reg,num));
+    }
+    fn rule_word(tokens : &mut Peekable<Iter<Token>>) -> Result<Word,ParserError>{
         if let Ok(num) = Parser::rule_uint(tokens){
             return Ok(Word::U64(num));
         }        
@@ -227,393 +338,345 @@ impl Parser {
         if let Ok(num) = Parser::rule_float(tokens){
             return Ok(Word::F64(num));
         }
-        return Err(());
+        return Err(ParserError::EmptyError);
     }
     
     
-    fn rule_reg(tokens : &mut Peekable<Iter<Token>>) -> Result<Register,()>{
+    fn rule_reg(tokens : &mut Peekable<Iter<Token>>) -> Result<Register,ParserError>{
         if let Some(token) = tokens.peek() {
-            match token {
-                Token::R1 => {
+            match token.token {
+                TokenType::R1 => {
                     tokens.next();
                     return Ok(Register::R1);
                 }
-                Token::R2 => {
+                TokenType::R2 => {
                     tokens.next();
                     return Ok(Register::R2);
                 }
-                Token::R3 => {
+                TokenType::R3 => {
                     tokens.next();
                     return Ok(Register::R3);
                 }
-                Token::R4 => {
+                TokenType::R4 => {
                     tokens.next();
                     return Ok(Register::R3);
                 }
-                Token::He => {
+                TokenType::He => {
                     tokens.next();
                     return Ok(Register::He);
                 }
-                Token::Fl => {
+                TokenType::Fl => {
                     tokens.next();
                     return Ok(Register::Fl);
                 }
-                Token::Li => {
+                TokenType::Li => {
                     tokens.next();
                     return Ok(Register::Li);
                 }
-                Token::Ni => {
+                TokenType::Ni => {
                     tokens.next();
                     return Ok(Register::Ni);
                 }
                 _ => {
-                    return Err(());
+                    return Err(ParserError::RuleError(token.line, token.column));
                 }
             }
         }
-        return Err(());
+        return Err(ParserError::EmptyError);
     }
     
-    fn rule_no_param(token : &Token) -> Result<Instruction,()>{
-        match token {
-            Token::POP => {
+    fn rule_no_param(token : &Token) -> Result<Instruction,ParserError>{
+        match token.token {
+            TokenType::POP => {
                 return Ok(Instruction::POP);
             }
             /* OPERATION */
-            Token::ADD => {
+            TokenType::ADD => {
                 return Ok(Instruction::ADD);
             }
-            Token::MINUS => {
+            TokenType::MINUS => {
                 return Ok(Instruction::MINUS);
             }
-            Token::MUL => {
+            TokenType::MUL => {
                 return Ok(Instruction::MUL);
             }
-            Token::DIV => {
+            TokenType::DIV => {
                 return Ok(Instruction::DIV);
             }
-            Token::MOD => {
+            TokenType::MOD => {
                 return Ok(Instruction::MOD);
             }
 
-            Token::BAND => {
+            TokenType::BAND => {
                 return Ok(Instruction::BAND);
             }
-            Token::BOR => {
+            TokenType::BOR => {
                 return Ok(Instruction::BOR);
             }
-            Token::BXOR => {
+            TokenType::BXOR => {
                 return Ok(Instruction::BXOR);
             }
-            Token::RSHIFT => {
+            TokenType::RSHIFT => {
                 return Ok(Instruction::RSHIFT);
             }
-            Token::LSHIFT => {
+            TokenType::LSHIFT => {
                 return Ok(Instruction::LSHIFT);
             }
-            Token::LESS => {
+            TokenType::LESS => {
                 return Ok(Instruction::LESS);
             }
-            Token::ELESS => {
+            TokenType::ELESS => {
                 return Ok(Instruction::ELESS);
             }
-            Token::GREAT => {
+            TokenType::GREAT => {
                 return Ok(Instruction::GREAT);
             }
-            Token::EGREAT => {
+            TokenType::EGREAT => {
                 return Ok(Instruction::EGREAT);
             }
-            Token::EQUAL => {
+            TokenType::EQUAL => {
                 return Ok(Instruction::EQUAL);
             }
-            Token::DIFF => {
+            TokenType::DIFF => {
                 return Ok(Instruction::DIFF);
             }
-            Token::AND => {
+            TokenType::AND => {
                 return Ok(Instruction::AND);
             }
-            Token::OR => {
+            TokenType::OR => {
                 return Ok(Instruction::OR);
             }
-            Token::NOT => {
+            TokenType::NOT => {
                 return Ok(Instruction::NOT);
             }
             /* FLOW */
-            Token::EXIT => {
+            TokenType::EXIT => {
                 return Ok(Instruction::EXIT);
             }
-            Token::NOP => {
+            TokenType::NOP => {
                 return Ok(Instruction::NOP);
             }
+            TokenType::SCALL => {
+                return Ok(Instruction::SCALL);
+            }
             _ => {
-                return Err(())
+                return Err(ParserError::RuleError(token.line, token.column));
             }
         }
     }
 
-    fn rule_unary_either_param(token : &Token,tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
-        match token {
+    fn rule_unary_either_param(token : &Token,tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        match token.token {
             /* OPERATION */
-            Token::RNOT => {
-                let Ok(x) = Parser::rule_either(tokens) else {
-                    return Err(());
-                };
+            TokenType::RNOT => {
+                let x = Parser::rule_either(tokens)?;
                 return Ok(Instruction::RNOT(x));
             }
             _ => {
-                return Err(())
+                return Err(ParserError::RuleError(token.line, token.column));
             }
         }
     }
-    fn binary_either_param(tokens : &mut Peekable<Iter<Token>>) -> Result<(Either<Word,Register>,Either<Word,Register>),()>{
-        let some_x = Parser::rule_either(tokens);
-        if some_x.is_err(){
-            return Err(());
-        }
-        let some_y = Parser::rule_either(tokens);
-        if some_y.is_err(){
-            return Err(());
-        }
-        let x = some_x.unwrap();
-        let y = some_y.unwrap();
+    fn binary_either_param(tokens : &mut Peekable<Iter<Token>>) -> Result<(Either<Word,Register>,Either<Word,Register>),ParserError>{
+        let x = Parser::rule_either(tokens)?;
+        let y = Parser::rule_either(tokens)?;
         return Ok((x,y));
     }
-    fn rule_binary_either_param(token : &Token,tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
-        match token {
+    fn rule_binary_either_param(token : &Token,tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        match token.token {
             /* OPERATION */
-            Token::RADD => {
-                let Ok((x,y)) = Parser::binary_either_param( tokens) else {
-                    return Err(());
-                };
+            TokenType::RADD => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RADD(x,y));
             }
-            Token::RMINUS => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RMINUS => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RMINUS(x,y));
             }
-            Token::RMUL => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RMUL => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RMUL(x,y));
             }
-            Token::RDIV => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RDIV => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RDIV(x,y));
             }
-            Token::RMOD => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RMOD => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RMOD(x,y));
             }
 
-            Token::RBAND => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RBAND => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RBAND(x,y));
             }
-            Token::RBOR => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RBOR => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RBOR(x,y));
             }
-            Token::RBXOR => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RBXOR => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RBXOR(x,y));
             }
-            Token::RRSHIFT => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RRSHIFT => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RRSHIFT(x,y));
             }
-            Token::RLSHIFT => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RLSHIFT => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RLSHIFT(x,y));
             }
-            Token::RLESS => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RLESS => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RLESS(x,y));
             }
-            Token::RELESS => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RELESS => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RELESS(x,y));
             }
-            Token::RGREAT => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RGREAT => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RGREAT(x,y));
             }
-            Token::REGREAT => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::REGREAT => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::REGREAT(x,y));
             }
-            Token::REQUAL => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::REQUAL => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::REQUAL(x,y));
             }
-            Token::RDIFF => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RDIFF => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RDIFF(x,y));
             }
-            Token::RAND => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::RAND => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::RAND(x,y));
             }
-            Token::ROR => {
-                let Ok((x,y)) = Parser::binary_either_param(tokens) else {
-                    return Err(());
-                };
+            TokenType::ROR => {
+                let (x,y) = Parser::binary_either_param( tokens)?;
                 return Ok(Instruction::ROR(x,y));
             }
             _ => {
-                return Err(())
+                return Err(ParserError::RuleError(token.line, token.column));
             }
         }
 
     }
 
-    fn rule_push(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
-        if let Ok(word) = Parser::rule_word(tokens){
-            return Ok(Instruction::PUSH(word));
-        }
-        return Err(());
+    fn rule_push(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let word = Parser::rule_either(tokens)?;
+        return Ok(Instruction::PUSH(word));
     }
-    fn rule_scopy(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
-        if let Ok(reg) = Parser::rule_reg(tokens){
-            return Ok(Instruction::SCOPY(reg));
-        }
-        return Err(());
+    fn rule_scopy(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let reg = Parser::rule_reg(tokens)?;
+        return Ok(Instruction::SCOPY(reg));
     }
-    fn rule_smove(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
-        if let Ok(reg) = Parser::rule_reg(tokens){
-            return Ok(Instruction::SMOVE(reg));
-        }
-        return Err(())
+    fn rule_smove(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let reg = Parser::rule_reg(tokens)?;
+        return Ok(Instruction::SMOVE(reg));
     }
-    fn rule_rcopy(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
-        let some_reg1 = Parser::rule_reg(tokens);
-        if some_reg1.is_err() {
-            return Err(());
-        }
-        let some_reg2 = Parser::rule_reg(tokens);
-        if some_reg2.is_err() {
-            return Err(());
-        }
-        let reg1 = some_reg1.unwrap();
-        let reg2 = some_reg2.unwrap();
+    fn rule_rcopy(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let reg1 = Parser::rule_reg(tokens)?;
+        let reg2 = Parser::rule_reg(tokens)?;
         return Ok(Instruction::RCOPY(reg1,reg2));
     }
-    fn rule_rmove(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
-        let some_reg1 = Parser::rule_reg(tokens);
-        if some_reg1.is_err() {
-            return Err(());
-        }
-        let some_reg2 = Parser::rule_reg(tokens);
-        if some_reg2.is_err() {
-            return Err(());
-        }
-        let reg1 = some_reg1.unwrap();
-        let reg2 = some_reg2.unwrap();
+    fn rule_rmove(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let reg1 = Parser::rule_reg(tokens)?;
+        let reg2 = Parser::rule_reg(tokens)?;
         return Ok(Instruction::RMOVE(reg1,reg2));
     }
-    fn rule_write(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,()>{
-        let some_word = Parser::rule_word(tokens);
-        if some_word.is_err() {
-            return Err(());
-        }
-        let some_reg2 = Parser::rule_reg(tokens);
-        if some_reg2.is_err() {
-            return Err(());
-        }
-        let word = some_word.unwrap();
-        let reg2 = some_reg2.unwrap();
-        return Ok(Instruction::WRITE(word,reg2));
+    fn rule_write(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let word = Parser::rule_word(tokens)?;
+        let reg = Parser::rule_reg(tokens)?;
+        return Ok(Instruction::WRITE(word,reg));
     }
-    fn rule_either(tokens : &mut Peekable<Iter<Token>>) -> Result<Either<Word,Register>,()> {
+    fn rule_sload(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let addr_op = Parser::rule_addr_op(tokens)?;
+        return Ok(Instruction::SLOAD(addr_op));
+    }
+    fn rule_sloadb(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let addr_op = Parser::rule_addr_op(tokens)?;
+        let size = Parser::rule_uint(tokens)?;
+        return Ok(Instruction::SLOADB(addr_op,size));
+    }
+    fn rule_either(tokens : &mut Peekable<Iter<Token>>) -> Result<Either<Word,Register>,ParserError> {
         let reg = Parser::rule_reg(tokens);
         if reg.is_err() {
-            let word = Parser::rule_word(tokens);
-            if word.is_err(){
-                return Err(());
-            }
-            return Ok(Either::Left(word.unwrap()));
+            let word = Parser::rule_word(tokens)?;
+            return Ok(Either::Left(word));
         }
-        tokens.next();
         Ok(Either::Right(reg.unwrap()))  
     }
     /* FLOW */
-    fn rule_label(tokens : &mut Peekable<Iter<Token>>) -> Result<String,()>{
-        if let Some(Token::LABEL(label)) = tokens.peek() {
-            tokens.next();
-            return Ok(label.to_owned());
+    fn rule_label(tokens : &mut Peekable<Iter<Token>>) -> Result<String,ParserError>{
+        if let Some(token) = tokens.peek() {
+            if let TokenType::LABEL(label) = &token.token{
+                tokens.next();
+                return Ok(label.to_owned());
+            }
+            return Err(ParserError::RuleError(token.line, token.column));
         }
-        return Err(());
+        return Err(ParserError::EmptyError);
     }
-    fn rule_go(tokens : &mut Peekable<Iter<Token>>,labels : &HashMap<String,usize>) -> Result<Either<Instruction,(Instruction,String)>,()>{
-        let some_label = Parser::rule_label(tokens);
-        if some_label.is_err(){
-            return Err(());
-        }
-        let label = some_label.unwrap();
-        dbg!(&labels);
+    fn rule_go(tokens : &mut Peekable<Iter<Token>>,labels : &HashMap<String,usize>) -> Result<Either<Instruction,(Instruction,String)>,ParserError>{
+        let label = Parser::rule_label(tokens)?;
         if let Some(addr) = labels.get(&label) {
             return Ok(Either::Left(Instruction::GO(*addr)));
         }else {
             return Ok(Either::Right((Instruction::GO(0),label.to_owned())))
         }
     }
-    fn rule_goif(tokens : &mut Peekable<Iter<Token>>,labels : &HashMap<String,usize>) -> Result<Either<Instruction,(Instruction,String)>,()>{
-        let some_label = Parser::rule_label(tokens);
-        if some_label.is_err(){
-            return Err(());
-        }
-        let label = some_label.unwrap();
+    fn rule_goif(tokens : &mut Peekable<Iter<Token>>,labels : &HashMap<String,usize>) -> Result<Either<Instruction,(Instruction,String)>,ParserError>{
+        let label = Parser::rule_label(tokens)?;
         if let Some(addr) = labels.get(&label) {
             return Ok(Either::Left(Instruction::GOIF(*addr)));
         }else {
             return Ok(Either::Right((Instruction::GOIF(0),label.to_owned())))
         }
     }
-    fn rule_rgoif(tokens : &mut Peekable<Iter<Token>>,labels : &HashMap<String,usize>) -> Result<Either<Instruction,(Instruction,String)>,()>{
-        let some_label = Parser::rule_label(tokens);
-        if some_label.is_err(){
-            return Err(());
-        }
-        let label = some_label.unwrap();
-        let some_reg = Parser::rule_reg(tokens);
-        if some_reg.is_err() {
-            return Err(());
-        }
-        let reg = some_reg.unwrap();
+    fn rule_rgoif(tokens : &mut Peekable<Iter<Token>>,labels : &HashMap<String,usize>) -> Result<Either<Instruction,(Instruction,String)>,ParserError>{
+        let label = Parser::rule_label(tokens)?;
+        let reg = Parser::rule_reg(tokens)?;
         if let Some(addr) = labels.get(&label) {
             return Ok(Either::Left(Instruction::RGOIF(*addr,reg)));
         }else {
             return Ok(Either::Right((Instruction::RGOIF(0,reg),label.to_owned())))
         }
+    }
+    fn rule_call(tokens : &mut Peekable<Iter<Token>>,labels : &HashMap<String,usize>) -> Result<Either<Instruction,(Instruction,String)>,ParserError>{
+        let label = Parser::rule_label(tokens)?;
+        if let Some(addr) = labels.get(&label) {
+            return Ok(Either::Left(Instruction::CALL(*addr)));
+        }else {
+            return Ok(Either::Right((Instruction::CALL(0),label.to_owned())))
+        }
+    }
+    fn rule_callp(tokens : &mut Peekable<Iter<Token>>,labels : &HashMap<String,usize>) -> Result<Either<Instruction,(Instruction,String)>,ParserError>{
+        let label = Parser::rule_label(tokens)?;
+        let size = Parser::rule_uint(tokens)?;
+        if let Some(addr) = labels.get(&label) {
+            return Ok(Either::Left(Instruction::CALLP(*addr,size)));
+        }else {
+            return Ok(Either::Right((Instruction::CALLP(0,size),label.to_owned())))
+        }
+    }
+    fn rule_scallp(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let size = Parser::rule_uint(tokens)?;
+        return Ok(Instruction::SCALLP(size));
+    }
+    fn rule_ret(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let size = Parser::rule_uint(tokens)?;
+        return Ok(Instruction::RET(size));
+    }
+    fn rule_rcall(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let reg = Parser::rule_reg(tokens)?;
+        return Ok(Instruction::RCALL(reg));
+    }
+    fn rule_rcallp(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let reg = Parser::rule_reg(tokens)?;
+        let size = Parser::rule_uint(tokens)?;
+        return Ok(Instruction::RCALLP(reg,size));
     }
 }

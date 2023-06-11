@@ -2,7 +2,9 @@ use std::{path::{PathBuf}, fs::{self, File}};
 
 use bincode::{de, Options};
 
-use crate::{asm::{lexer::Lexer, parser::Parser}, vm::vm::{Instruction, Program}};
+use crate::{asm::{ parser::Parser}, vm::vm::{Instruction, Program}};
+
+use super::lexer;
 
 
 
@@ -28,7 +30,7 @@ impl Vasm {
             out_path : vk_path,
         })
     }
-
+    
     pub fn dissamble(&self) {
         let instructions = bincode::deserialize_from
             ::<File,Vec<Instruction>>(File::open(&self.out_path).unwrap());
@@ -37,14 +39,13 @@ impl Vasm {
 
 
     pub fn assemble(&self) -> Result<(),()>{
-        let mut lexer = Lexer::new();
 
-        let error = lexer.run(&self.src);
-        if error.is_some() {
-            panic!("{:#?}", error.unwrap());
+        let lexems = lexer::tokenize(&self.src);
+        if lexems.is_err() {
+            panic!("{:#?}", lexems.unwrap());
         }
-
-        let mut parser = Parser::init(lexer.lexems);
+        let lexems = lexems.unwrap();
+        let mut parser = Parser::init(lexems);
         let instructions = parser.run();
         if instructions.is_err() {
             panic!("{:#?}", instructions);
@@ -62,4 +63,5 @@ impl Vasm {
         }
         return Ok(());
     }
+    
 }

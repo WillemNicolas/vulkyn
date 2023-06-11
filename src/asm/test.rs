@@ -1,7 +1,7 @@
 use std::{fs, path::{PathBuf}};
-use crate::asm::parser::Parser;
+use crate::asm::{parser::Parser, lexer};
 
-use super::{lexer::Lexer, asm::Vasm};
+use super::{asm::Vasm};
 
 fn test_file(file : &str) -> PathBuf{
     let mut d = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -13,19 +13,20 @@ fn test_file(file : &str) -> PathBuf{
 
 #[test]
 fn test_lexer() {
-    let mut lexer = Lexer::new();
     let src = fs::read_to_string(test_file("test.vasm").as_path()).unwrap();
-    let error = lexer.run(&src);
-    assert!(error.is_none());
+    let res = lexer::tokenize(&src);
+    dbg!(&res);
+    assert!(res.is_ok());
 }
+
+
 #[test]
 fn test_parser() {
-    let mut lexer = Lexer::new();
     let src = fs::read_to_string(test_file("test.vasm").as_path()).unwrap();
-    let error = lexer.run(&src);
-    assert!(error.is_none());
+    let res = lexer::tokenize(&src);
     
-    let mut parser = Parser::init(lexer.lexems);
+    assert!(res.is_ok());
+    let mut parser = Parser::init(res.unwrap());
     let instructions = parser.run();
     assert!(instructions.is_ok());
     let instructions = instructions.unwrap();

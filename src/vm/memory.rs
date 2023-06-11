@@ -1,400 +1,8 @@
-use std::ops::{BitAnd, Add, Sub, Mul, Div, Rem, BitOr, Shl, Shr, BitXor};
 
 use serde::{Serialize, Deserialize};
 
-use super::vm::Register;
+use super::{word::Word, register::{Registers, Register}};
 
-#[derive(Debug,Clone,Copy,Serialize,Deserialize)]
-pub enum Word{
-    U64(usize),
-    I64(isize),
-    F64(f64),
-    CHAR(char),
-    BOOL(bool),
-}
-impl Word {
-    pub fn init() -> Self{
-        return Word::U64(0x0);
-    }
-    pub fn is_zero(self) -> bool {
-        match self {
-            Word::U64(w) => w == 0,
-            Word::I64(w) => w == 0,
-            Word::F64(w) => w == 0.0,
-            Word::CHAR(w) => w as u8 == 0,
-            Word::BOOL(w) => !w,
-        }
-    }
-    pub fn and(&self, other: &Self) -> Self {
-        return Word::BOOL(!self.is_zero() && !other.is_zero()); 
-    }
-    pub fn or(&self, other: &Self) -> Self {
-        return Word::BOOL(!self.is_zero() || !other.is_zero()); 
-    }
-    pub fn neg(&self) -> Self {
-        return Word::BOOL(self.is_zero()); 
-    }
-}
-impl PartialEq for Word {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (Self::U64(l0), Self::U64(r0)) => *l0 == *r0,
-            (Self::I64(l0), Self::I64(r0)) => *l0 == *r0,
-            (Self::F64(l0), Self::F64(r0)) => *l0 == *r0,
-            (Self::CHAR(l0), Self::CHAR(r0)) => *l0 == *r0,
-            (Self::BOOL(l0), Self::BOOL(r0)) => *l0 == *r0,
-            _ => false,
-        }
-    }
-}
-impl PartialOrd for Word {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match (self, other) {
-            (Self::U64(l0), Self::U64(r0)) => l0.partial_cmp(r0),
-            (Self::I64(l0), Self::I64(r0)) => l0.partial_cmp(r0),
-            (Self::F64(l0), Self::F64(r0)) => l0.partial_cmp(r0),
-            (Self::CHAR(l0), Self::CHAR(r0)) => l0.partial_cmp(r0),
-            (Self::BOOL(l0), Self::BOOL(r0)) => l0.partial_cmp(r0),
-            _ => None,
-        }
-    }
-}
-
-impl Add for Word{
-    type Output = Self;
-
-    fn add(self, rhs: Self) -> Self::Output {
-        match self {
-            Word::U64(x) => match rhs {
-                Word::U64(y) => Word::U64(x+y),
-                Word::I64(y) => Word::I64(x as  isize + y),
-                Word::F64(y) => Word::F64(x as f64 + y),
-                Word::CHAR(y) => Word::CHAR(((x as u8) + (y as u8)) as char ),
-                Word::BOOL(y) => Word::U64(x + (y as usize)),
-            },
-            Word::I64(x) =>  match rhs {
-                Word::U64(y) => Word::I64(x+y as isize),
-                Word::I64(y) => Word::I64(x + y),
-                Word::F64(y) => Word::F64(x as f64 + y ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) + (y as u8)) as char ),
-                Word::BOOL(y) => Word::I64(x + (y as isize)),
-            },
-            Word::F64(x) => match rhs {
-                Word::U64(y) => Word::F64(x + y as f64),
-                Word::I64(y) => Word::F64(x + y as f64),
-                Word::F64(y) => Word::F64(x + y ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) + (y as u8)) as char ),
-                Word::BOOL(y) => Word::F64(x + ((y as usize) as f64)),
-            },
-            Word::CHAR(x) => match rhs {
-                Word::U64(y) => Word::CHAR(((x as u8) + (y as u8)) as char ),
-                Word::I64(y) => Word::CHAR(((x as u8) + (y as u8)) as char ),
-                Word::F64(y) => Word::CHAR(((x as u8) + (y as u8)) as char ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) + (y as u8)) as char ),
-                Word::BOOL(y) => Word::CHAR(((x as u8) + (y as u8)) as char ),
-            },
-            Word::BOOL(x) => match rhs {
-                _ => Word::BOOL(x),
-            },
-        }
-    }
-}
-
-impl Sub for Word{
-    type Output = Self;
-
-    fn sub(self, rhs: Self) -> Self::Output {
-        match self {
-            Word::U64(x) => match rhs {
-                Word::U64(y) => Word::U64(x-y),
-                Word::I64(y) => Word::I64(x as  isize - y),
-                Word::F64(y) => Word::F64(x as f64 - y),
-                Word::CHAR(y) => Word::CHAR(((x as u8) - (y as u8)) as char ),
-                Word::BOOL(y) => Word::U64(x - (y as usize)),
-            },
-            Word::I64(x) =>  match rhs {
-                Word::U64(y) => Word::I64(x-y as isize),
-                Word::I64(y) => Word::I64(x - y),
-                Word::F64(y) => Word::F64(x as f64 - y ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) - (y as u8)) as char ),
-                Word::BOOL(y) => Word::I64(x - (y as isize)),
-            },
-            Word::F64(x) => match rhs {
-                Word::U64(y) => Word::F64(x - y as f64),
-                Word::I64(y) => Word::F64(x - y as f64),
-                Word::F64(y) => Word::F64(x - y ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) - (y as u8)) as char ),
-                Word::BOOL(y) => Word::F64(x - ((y as usize) as f64)),
-            },
-            Word::CHAR(x) => match rhs {
-                Word::U64(y) => Word::CHAR(((x as u8) - (y as u8)) as char ),
-                Word::I64(y) => Word::CHAR(((x as u8) - (y as u8)) as char ),
-                Word::F64(y) => Word::CHAR(((x as u8) - (y as u8)) as char ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) - (y as u8)) as char ),
-                Word::BOOL(y) => Word::CHAR(((x as u8) - (y as u8)) as char ),
-            },
-
-            Word::BOOL(x) => match rhs {
-                _ => Word::BOOL(x),
-            },
-        }
-    }
-}
-
-impl Mul for Word{
-    type Output = Self;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        match self {
-            Word::U64(x) => match rhs {
-                Word::U64(y) => Word::U64(x*y),
-                Word::I64(y) => Word::I64(x as  isize * y),
-                Word::F64(y) => Word::F64(x as f64 * y),
-                Word::CHAR(y) => Word::CHAR(((x as u8) * (y as u8)) as char ),
-                Word::BOOL(y) => Word::U64(x * (y as usize)),
-            },
-            Word::I64(x) =>  match rhs {
-                Word::U64(y) => Word::I64(x*y as isize),
-                Word::I64(y) => Word::I64(x * y),
-                Word::F64(y) => Word::F64(x as f64 * y ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) * (y as u8)) as char ),
-                Word::BOOL(y) => Word::I64(x * (y as isize)),
-            },
-            Word::F64(x) => match rhs {
-                Word::U64(y) => Word::F64(x * y as f64),
-                Word::I64(y) => Word::F64(x * y as f64),
-                Word::F64(y) => Word::F64(x * y ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) * (y as u8)) as char ),
-                Word::BOOL(y) => Word::F64(x * ((y as usize) as f64)),
-            },
-            Word::CHAR(x) => match rhs {
-                Word::U64(y) => Word::CHAR(((x as u8) * (y as u8)) as char ),
-                Word::I64(y) => Word::CHAR(((x as u8) * (y as u8)) as char ),
-                Word::F64(y) => Word::CHAR(((x as u8) * (y as u8)) as char ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) * (y as u8)) as char ),
-                Word::BOOL(y) => Word::CHAR(((x as u8) * (y as u8)) as char ),
-            },
-            Word::BOOL(x) => match rhs {
-                _ => Word::BOOL(x),
-            },
-        }
-    }
-}
-
-impl Div for Word{
-    type Output = Self;
-
-    fn div(self, rhs: Self) -> Self::Output {
-        match self {
-            Word::U64(x) => match rhs {
-                Word::U64(y) => Word::U64(x/y),
-                Word::I64(y) => Word::I64(x as  isize / y),
-                Word::F64(y) => Word::F64(x as f64 / y),
-                Word::CHAR(y) => Word::CHAR(((x as u8) / (y as u8)) as char ),
-                Word::BOOL(y) => Word::U64(x / (y as usize)),
-            },
-            Word::I64(x) =>  match rhs {
-                Word::U64(y) => Word::I64(x/y as isize),
-                Word::I64(y) => Word::I64(x / y),
-                Word::F64(y) => Word::F64(x as f64 / y ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) / (y as u8)) as char ),
-                Word::BOOL(y) => Word::I64(x / (y as isize)),
-            },
-            Word::F64(x) => match rhs {
-                Word::U64(y) => Word::F64(x / y as f64),
-                Word::I64(y) => Word::F64(x / y as f64),
-                Word::F64(y) => Word::F64(x / y ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) / (y as u8)) as char ),
-                Word::BOOL(y) => Word::F64(x / ((y as usize) as f64)),
-            },
-            Word::CHAR(x) => match rhs {
-                Word::U64(y) => Word::CHAR(((x as u8) / (y as u8)) as char ),
-                Word::I64(y) => Word::CHAR(((x as u8) / (y as u8)) as char ),
-                Word::F64(y) => Word::CHAR(((x as u8) / (y as u8)) as char ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) / (y as u8)) as char ),
-                Word::BOOL(y) => Word::CHAR(x),
-            },
-            Word::BOOL(x) => match rhs {
-                _ => Word::BOOL(x),
-            },
-        }
-    }
-}
-
-impl Rem for Word{
-    type Output = Self;
-
-    fn rem(self, rhs: Self) -> Self::Output {
-        match self {
-            Word::U64(x) => match rhs {
-                Word::U64(y) => Word::U64(x%y),
-                Word::I64(y) => Word::I64(x as  isize % y),
-                Word::F64(y) => Word::F64(x as f64 % y),
-                Word::CHAR(y) => Word::CHAR(((x as u8) % (y as u8)) as char ),
-                Word::BOOL(y) => Word::U64(x % (y as usize)),
-            },
-            Word::I64(x) =>  match rhs {
-                Word::U64(y) => Word::I64(x%y as isize),
-                Word::I64(y) => Word::I64(x % y),
-                Word::F64(y) => Word::F64(x as f64 % y ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) % (y as u8)) as char ),
-                Word::BOOL(y) => Word::I64(x % (y as isize)),
-            },
-            Word::F64(x) => match rhs {
-                Word::U64(y) => Word::F64(x % y as f64),
-                Word::I64(y) => Word::F64(x % y as f64),
-                Word::F64(y) => Word::F64(x % y ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) % (y as u8)) as char ),
-                Word::BOOL(y) => Word::F64(x % ((y as usize) as f64)),
-            },
-            Word::CHAR(x) => match rhs {
-                Word::U64(y) => Word::CHAR(((x as u8) % (y as u8)) as char ),
-                Word::I64(y) => Word::CHAR(((x as u8) % (y as u8)) as char ),
-                Word::F64(y) => Word::CHAR(((x as u8) % (y as u8)) as char ),
-                Word::CHAR(y) => Word::CHAR(((x as u8) % (y as u8)) as char ),
-                Word::BOOL(y) => Word::CHAR(((x as u8) % (y as u8)) as char ),
-            },
-            Word::BOOL(x) => match rhs {
-                _ => Word::BOOL(x),
-            },
-        }
-    }
-}
-
-impl BitAnd for Word {
-    type Output = Self;
-
-    fn bitand(self, rhs: Self) -> Self::Output {
-        let cmp_bytes = {
-            match rhs {
-                Word::U64(w) => w,
-                Word::I64(w) => w as usize,
-                Word::F64(w) => w as usize,
-                Word::CHAR(w) => w as usize,
-                Word::BOOL(w) => w as usize,
-            }
-        };
-        let self_bytes = {
-            match self {
-                Word::U64(w) => w,
-                Word::I64(w) => w as usize,
-                Word::F64(w) => w as usize,
-                Word::CHAR(w) => w as usize,
-                Word::BOOL(w) => w as usize,
-            }
-        };
-        let res = self_bytes & cmp_bytes;
-        return Word::U64(res);
-    }
-}
-
-impl BitOr for Word {
-    type Output = Self;
-
-    fn bitor(self, rhs: Self) -> Self::Output {
-        let cmp_bytes = {
-            match rhs {
-                Word::U64(w) => w,
-                Word::I64(w) => w as usize,
-                Word::F64(w) => w as usize,
-                Word::CHAR(w) => w as usize,
-                Word::BOOL(w) => w as usize,
-            }
-        };
-        let self_bytes = {
-            match self {
-                Word::U64(w) => w,
-                Word::I64(w) => w as usize,
-                Word::F64(w) => w as usize,
-                Word::CHAR(w) => w as usize,
-                Word::BOOL(w) => w as usize,
-            }
-        };
-        let res = self_bytes | cmp_bytes;
-        return Word::U64(res);
-    }
-}
-
-
-impl BitXor for Word {
-    type Output = Self;
-
-    fn bitxor(self, rhs: Self) -> Self::Output {
-        let cmp_bytes = {
-            match rhs {
-                Word::U64(w) => w,
-                Word::I64(w) => w as usize,
-                Word::F64(w) => w as usize,
-                Word::CHAR(w) => w as usize,
-                Word::BOOL(w) => w as usize,
-            }
-        };
-        let self_bytes = {
-            match self {
-                Word::U64(w) => w,
-                Word::I64(w) => w as usize,
-                Word::F64(w) => w as usize,
-                Word::CHAR(w) => w as usize,
-                Word::BOOL(w) => w as usize,
-            }
-        };
-        let res = self_bytes ^ cmp_bytes;
-        return Word::U64(res);
-    }
-}
-impl Shl for Word {
-    type Output = Self;
-
-    fn shl(self, rhs: Self) -> Self::Output {
-        let cmp_bytes = {
-            match rhs {
-                Word::U64(w) => w,
-                Word::I64(w) => w as usize,
-                Word::F64(w) => w as usize,
-                Word::CHAR(w) => w as usize,
-                Word::BOOL(w) => w as usize,
-            }
-        };
-        let self_bytes = {
-            match self {
-                Word::U64(w) => w,
-                Word::I64(w) => w as usize,
-                Word::F64(w) => w as usize,
-                Word::CHAR(w) => w as usize,
-                Word::BOOL(w) => w as usize,
-            }
-        };
-        let res = self_bytes << cmp_bytes;
-        return Word::U64(res);
-    }
-}
-
-impl Shr for Word {
-    type Output = Self;
-
-    fn shr(self, rhs: Self) -> Self::Output {
-        let cmp_bytes = {
-            match rhs {
-                Word::U64(w) => w,
-                Word::I64(w) => w as usize,
-                Word::F64(w) => w as usize,
-                Word::CHAR(w) => w as usize,
-                Word::BOOL(w) => w as usize,
-            }
-        };
-        let self_bytes = {
-            match self {
-                Word::U64(w) => w,
-                Word::I64(w) => w as usize,
-                Word::F64(w) => w as usize,
-                Word::CHAR(w) => w as usize,
-                Word::BOOL(w) => w as usize,
-            }
-        };
-        let res = self_bytes >> cmp_bytes;
-        return Word::U64(res);
-    }
-}
 #[derive(Debug)]
 pub enum MemoryError {
     StackUnderflow,
@@ -407,8 +15,9 @@ pub enum MemoryError {
 pub struct Memory {
     stack : Vec<Word>,
     heap : Vec<Word>,
-    stack_size : usize,
-    heap_size : usize
+    pub stack_size : usize,
+    heap_size : usize,
+    pub registers : Registers,
 }
 
 impl Memory {
@@ -418,12 +27,28 @@ impl Memory {
             heap : Vec::new(),
             stack_size : 0,
             heap_size : 0,
+            registers : Registers::init(),
         }
     }
     /* STACK ACCESS */
     pub fn push(&mut self,word : Word) {
         self.stack.push(word);
+        self.registers.set(Register::Ts, Word::U64(self.stack_size));
         self.stack_size += 1;
+    }
+
+    pub fn extend(&mut self,words : Vec<Word>) {
+        self.stack_size += words.len();
+        self.stack.extend(words.iter());
+        self.registers.set(Register::Ts, Word::U64(self.stack_size-1));
+    }
+
+    pub fn insert(&mut self, word : Word,idx : usize) -> Result<Word,MemoryError> {
+        if self.stack_size < idx {
+            return Err(MemoryError::StackUnderflow);
+        }
+        self.stack.insert(self.stack_size - idx, word);
+        return Ok(Word::U64(self.stack_size - idx))
     }
 
     pub fn pop(&mut self) -> Result<Word,MemoryError> {
@@ -431,6 +56,7 @@ impl Memory {
         match some_word {
             Some(word) => {
                 self.stack_size -= 1;
+                self.registers.set(Register::Ts, Word::U64(self.stack_size-1));
                 return Ok(word);
             }
             None => {
@@ -449,6 +75,30 @@ impl Memory {
                 return Err(MemoryError::StackSegmentationFault);
             }
         }
+    }
+
+    pub fn stack_read(&self, addr : Word) -> Result<Word,MemoryError>{
+        let idx = addr.as_usize();
+        let Some(word) = self.stack.get(idx) else {
+            return Err(MemoryError::StackSegmentationFault);
+        };
+        return Ok(*word);
+    }
+    pub fn stack_read_range(&self, addr : Word,size : usize) -> Result<Vec<Word>,MemoryError>{
+        let idx = addr.as_usize();
+        if idx + size > self.stack_size {
+            return Err(MemoryError::StackSegmentationFault);
+        }
+        let res = self.stack[idx..size].to_vec();
+        return Ok(res);
+    }
+    pub fn stack_clean(&mut self,start : usize,end : usize) -> Result<(),MemoryError> {
+        if end > self.stack_size {
+            return Err(MemoryError::StackOverflow);
+        }
+        self.stack.drain(start..end);
+        self.stack_size = self.stack.len();
+        return Ok(())
     }
 
     /* HEAP ACCESS */

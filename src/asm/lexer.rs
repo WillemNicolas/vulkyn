@@ -1,383 +1,105 @@
-#[derive(Clone,Debug)]
-pub enum Token {
-    EOF,
-    UINT(usize),
-    INT(isize),
-    FLOAT(f64),
-    CHAR(char),
-    /* REGISTER */
-    R1,
-    R2,
-    R3,
-    R4,
-    He,
-    Fl,
-    Li,
-    Ni,
-    /* MEMORY ACCESS */
-    PUSH,
-    POP,
-    SCOPY,
-    SMOVE,
-    RCOPY,
-    RMOVE,
-    WRITE,
+use super::token::{TokenType, match_token_type};
 
-    /* OPERATOR */
-    // +
-    ADD,
-    RADD,
-    // -
-    MINUS,
-    RMINUS,
-    // *
-    MUL,
-    RMUL,
-    // /
-    DIV,
-    RDIV,
-    // % 
-    MOD,
-    RMOD,
-
-    // &
-    BAND,
-    RBAND,
-    // |
-    BOR,
-    RBOR,
-    // ^
-    BXOR,
-    RBXOR,
-    // >>
-    RSHIFT,
-    RRSHIFT,
-    // <<
-    LSHIFT,
-    RLSHIFT,
-
-
-    // == 
-    EQUAL,
-    REQUAL,
-    // !=
-    DIFF,
-    RDIFF,
-    // ! 
-    NOT,
-    RNOT,
-    // &&
-    AND,
-    RAND,
-    // ||
-    OR,
-    ROR,
-
-    // <
-    LESS,
-    RLESS,
-    // <=
-    ELESS,
-    RELESS,
-    // >
-    GREAT,
-    RGREAT,
-    // >=
-    EGREAT,
-    REGREAT,
-
-    /* FLOW */
-    EXIT,
-    NOP,
-    LABEL(String),
-    GO,
-    GOIF,
-    RGOIF,
-}
 
 #[derive(Debug)]
+pub struct Token {
+    pub token : TokenType,
+    pub line : usize,
+    pub column : usize,
+}
+#[derive(Debug)]
 pub enum LexerError {
-    IllegalInstruction,
+    UnrecognizedToken(usize,usize)
 }
 
-pub struct Lexer {
-    pub lexems : Vec<Token>
+fn eat_whitespace(src : &str, cursor : usize) -> usize {
+    let Some((idx,_)) = src[cursor..].char_indices().find(|(idx,char)| {
+        return *char != ' ';
+    }) else {
+        return src.len();
+    };
+    return cursor + idx;
 }
 
-impl Lexer {
-    pub fn new() -> Self {
-        Self {
-            lexems : Vec::new()
-        }
-    }
-    pub fn run(&mut self,src : &String) -> Option<LexerError>{
-        let mut current_token = Token::NOP;
-        for word in src.split_ascii_whitespace(){
-            if let Ok(num) = word.parse::<usize>(){
-                self.lexems.push(Token::UINT(num));
-                continue;
-            }
-            if let Ok(num) = word.parse::<isize>(){
-                self.lexems.push(Token::INT(num));
-                continue;
-            }
-            if let Ok(num) = word.parse::<f64>(){
-                self.lexems.push(Token::FLOAT(num));
-                continue;
-            }
-            if word.starts_with("'") && word.ends_with("'") && word.len() == 3{
-                self.lexems.push(Token::CHAR(word.chars().nth(1).unwrap()));
-                continue;
-            }
-            if word.starts_with("%") {
-                self.lexems.push(Token::LABEL(word[1..].to_string()));
-                continue;
-            }
-            match word.to_ascii_lowercase().as_str() {
-                /* REGISTER */
-                "r1" => {
-                    self.lexems.push(Token::R1);
-                    continue;
-                }
-                "r2" => {
-                    self.lexems.push(Token::R2);
-                    continue;
-                }
-                "r3" => {
-                    self.lexems.push(Token::R3);
-                    continue;
-                }
-                "r4" => {
-                    self.lexems.push(Token::R4);
-                    continue;
-                }
-                "he" => {
-                    self.lexems.push(Token::He);
-                    continue;
-                }
-                "fl" => {
-                    self.lexems.push(Token::Fl);
-                    continue;
-                }
-                "li" => {
-                    self.lexems.push(Token::Li);
-                    continue;
-                }
-                "ni" => {
-                    self.lexems.push(Token::Ni);
-                    continue;
-                }
-                /* MEMORY ACCESS */
-                "write" => {
-                    self.lexems.push(Token::WRITE);
-                    continue;
-                }
-                "push" => {
-                    self.lexems.push(Token::PUSH);
-                    continue;
-                }
-                "pop" => {
-                    self.lexems.push(Token::POP);
-                    continue;
-                }
-                "scopy" => {
-                    self.lexems.push(Token::SCOPY);
-                    continue;
-                }
-                "smove" => {
-                    self.lexems.push(Token::SMOVE);
-                    continue;
-                }
-                "rcopy" => {
-                    self.lexems.push(Token::RCOPY);
-                    continue;
-                }
-                "rmove" => {
-                    self.lexems.push(Token::RMOVE);
-                    continue;
-                }
-                /* OPERATOR */
-                "add" => {
-                    self.lexems.push(Token::ADD);
-                    continue;
-                }
-                "radd" => {
-                    self.lexems.push(Token::RADD);
-                    continue;
-                }
-                "sub" => {
-                    self.lexems.push(Token::MINUS);
-                    continue;
-                }
-                "rsub" => {
-                    self.lexems.push(Token::RMINUS);
-                    continue;
-                }
-                "mul" => {
-                    self.lexems.push(Token::MUL);
-                    continue;
-                }
-                "rmul" => {
-                    self.lexems.push(Token::RMUL);
-                    continue;
-                }
-                "div" => {
-                    self.lexems.push(Token::DIV);
-                    continue;
-                }
-                "rdiv" => {
-                    self.lexems.push(Token::RDIV);
-                    continue;
-                }
-                "mod" => {
-                    self.lexems.push(Token::MOD);
-                    continue;
-                }
-                "rmod" => {
-                    self.lexems.push(Token::RMOD);
-                    continue;
-                }
+fn until_new_line(src : &str, cursor : usize) -> usize {
+    let Some((idx,_)) = src[cursor..].char_indices().find(|(idx,char)| {
+        return *char == '\n';
+    }) else {
+        return src.len();
+    };
+    return idx + 1;
+}
 
-                "band" => {
-                    self.lexems.push(Token::BAND);
-                    continue;
-                }
-                "rband" => {
-                    self.lexems.push(Token::RBAND);
-                    continue;
-                }
+fn word(src : &str, cursor : usize) -> (usize,usize) {
+    if &src[cursor..cursor+1] == "\n" {
+        return (cursor,cursor+1)
+    }
+    let (idx,_) = src[cursor..].char_indices().find(|(idx,char)| {
+        return char.is_ascii_whitespace() || *char == '\n';
+    }).unwrap_or((src.len() - cursor,char::default()));
+    return (cursor,cursor + idx);  
+}
 
-                "bor" => {
-                    self.lexems.push(Token::BOR);
-                    continue;
-                }
-                "rbor" => {
-                    self.lexems.push(Token::RBOR);
-                    continue;
-                }
-                "bxor" => {
-                    self.lexems.push(Token::BXOR);
-                    continue;
-                }
-                "rbxor" => {
-                    self.lexems.push(Token::RBXOR);
-                    continue;
-                }
-                "rsh" => {
-                    self.lexems.push(Token::RSHIFT);
-                    continue;
-                }
-                "rrsh" => {
-                    self.lexems.push(Token::RRSHIFT);
-                    continue;
-                }
-                "lsh" => {
-                    self.lexems.push(Token::LSHIFT);
-                    continue;
-                }
-                "rlsh" => {
-                    self.lexems.push(Token::RLSHIFT);
-                    continue;
-                }
-                "eq" => {
-                    self.lexems.push(Token::EQUAL);
-                    continue;
-                }
-                "req" => {
-                    self.lexems.push(Token::REQUAL);
-                    continue;
-                }
-                "neq" => {
-                    self.lexems.push(Token::DIFF);
-                    continue;
-                }
-                "rneq" => {
-                    self.lexems.push(Token::RDIFF);
-                    continue;
-                }
-                "not" => {
-                    self.lexems.push(Token::NOT);
-                    continue;
-                }
-                "rnot" => {
-                    self.lexems.push(Token::RNOT);
-                    continue;
-                }
-                "and" => {
-                    self.lexems.push(Token::AND);
-                    continue;
-                }
-                "rand" => {
-                    self.lexems.push(Token::RAND);
-                    continue;
-                }
-                "or" => {
-                    self.lexems.push(Token::OR);
-                    continue;
-                }
-                "ror" => {
-                    self.lexems.push(Token::ROR);
-                    continue;
-                }
-                "lt" => {
-                    self.lexems.push(Token::LESS);
-                    continue;
-                }
-                "rlt" => {
-                    self.lexems.push(Token::RLESS);
-                    continue;
-                }
-                "lte" => {
-                    self.lexems.push(Token::ELESS);
-                    continue;
-                }
-                "rlte" => {
-                    self.lexems.push(Token::RELESS);
-                    continue;
-                }
-                "gt" => {
-                    self.lexems.push(Token::GREAT);
-                    continue;
-                }
-                "rgt" => {
-                    self.lexems.push(Token::RGREAT);
-                    continue;
-                }
-                "gte" => {
-                    self.lexems.push(Token::EGREAT);
-                    continue;
-                }
-                "rgte" => {
-                    self.lexems.push(Token::REGREAT);
-                    continue;
-                }
-                /* FLOW */
-                "exit" => {
-                    self.lexems.push(Token::EXIT);
-                    continue;
-                }
-                "nop" => {
-                    self.lexems.push(Token::NOP);
-                    continue;
-                }
-                "go" => {
-                    self.lexems.push(Token::GO);
-                    continue;
-                }
-                "goif" => {
-                    self.lexems.push(Token::GOIF);
-                    continue;
-                }
-                "rgoif" => {
-                    self.lexems.push(Token::RGOIF);
-                    continue;
-                }
-                _ => {
-                    return Some(LexerError::IllegalInstruction);
+pub fn tokenize(src : &str) -> Result<Vec<Token>,LexerError> {
+    let mut cursor : usize = 0;
+    let src_size = src.len();
+    let mut res : Vec<Token> = vec![];
+
+    let mut line =1;
+    let mut column = 1;
+    let mut start_column_cursor = 1;
+
+    while cursor < src_size{
+        cursor = eat_whitespace(src, cursor);
+        let (start_word,end_word) = word(src, cursor);
+        let mut end_word = end_word;
+        dbg!(&src[start_word..end_word]);
+        if &src[start_word..end_word] == "\n"{
+            line += 1;
+            column = 0;
+            cursor = end_word;
+            start_column_cursor = cursor;
+            continue;
+        }
+        if (src[start_word..end_word].ends_with("]") 
+            || src[start_word..end_word].ends_with("|"))
+            && end_word-start_word > 1 {
+            end_word -= 1;
+        }
+        let some_tt = match_token_type(&src[start_word..end_word]);
+        let some_tt = match some_tt {
+            Some(tt) => Some(tt),
+            None => {
+                if src[start_word..].starts_with("[") {
+                    end_word = start_word + 1;
+                    Some(TokenType::O_SBR)
+                }else if src[start_word..].starts_with("|") {
+                    end_word = start_word + 1;
+                    Some(TokenType::BAR)
+                }else {
+                    None
                 }
             }
-        }
-        self.lexems.push(Token::EOF);
-        return None;
+        };
+        let Some(tt) = some_tt else {
+            return Err(LexerError::UnrecognizedToken(line, column))
+        };
+        let token = Token{
+            token : tt,
+            line,
+            column
+        };
+        dbg!(&token);
+        column = end_word - start_column_cursor;
+        res.push(token);
+        cursor = end_word;
     }
+
+
+    res.push(Token { 
+        token: TokenType::EOF,
+        line: line+1,
+        column: 0, 
+    });
+    return Ok(res);
 }

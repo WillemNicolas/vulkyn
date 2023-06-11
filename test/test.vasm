@@ -1,11 +1,7 @@
-
 %main
-    push 1
-    push 2
-    add
-    go %label2
-%label
     push 5
-%label2
-    push 4
+    call %f
     exit
+%f
+    push 1
+    ret 1
