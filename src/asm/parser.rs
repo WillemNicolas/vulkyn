@@ -1,4 +1,4 @@
-use std::{iter::Peekable, collections::HashMap};
+use std::{iter::Peekable, collections::HashMap, borrow::Borrow};
 
 use crate::vm::{vm::{Instruction,Either}, word::Word, register::Register};
 
@@ -82,27 +82,76 @@ impl Parser {
                         
                     } 
                 }
+                TokenType::RWRITE => {
+                    let some_inst = Parser::rule_rwrite(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                }
+                TokenType::LOAD => {
+                    let some_inst = Parser::rule_load(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                }
+                TokenType::LOADB => {
+                    let some_inst = Parser::rule_loadb(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                }
+                TokenType::READ => {
+                    let some_inst = Parser::rule_read(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                }
+                TokenType::SREAD => {
+                    let some_inst = Parser::rule_sread(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                },
                 TokenType::WRITE => {
-                    let some_inst = Parser::rule_sload(&mut tokens);
-                    if let Ok(inst) = some_inst {
-                        res.push(inst);
-                        
-                    } 
-                }
-                TokenType::SLOAD => {
-                    let some_inst = Parser::rule_sloadb(&mut tokens);
-                    if let Ok(inst) = some_inst {
-                        res.push(inst);
-                        
-                    } 
-                }
-                TokenType::SLOADB => {
                     let some_inst = Parser::rule_write(&mut tokens);
                     if let Ok(inst) = some_inst {
                         res.push(inst);
                         
                     } 
-                }
+                },
+                TokenType::SWRITE => {
+                    let some_inst = Parser::rule_swrite(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                },
+                TokenType::ALLOC => {
+                    let some_inst = Parser::rule_alloc(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                },
+                TokenType::FREE => {
+                    let some_inst = Parser::rule_free(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                },
+                TokenType::SFREE => {
+                    let some_inst = Parser::rule_sfree(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                },
                 /* FLOW */
                 TokenType::LABEL(label) => {
                     self.labels.insert(label.to_owned(),self.number_instructions);
@@ -312,17 +361,28 @@ impl Parser {
             return Err(ParserError::RuleError(token.line, token.column));
         }
         let reg = Parser::rule_reg(tokens)?;
-
         let Some(token) = tokens.peek() else {
             return Err(ParserError::EmptyError);
         };
-        if let TokenType::BAR = token.token{
+        if let TokenType::C_SBR = token.token{
+            tokens.next();
+            return Ok((reg,0));
+        }else if let TokenType::BAR = token.token{
             tokens.next();
         }else {
             return Err(ParserError::RuleError(token.line, token.column));
         }
 
         let num = Parser::rule_int(tokens)?;
+
+        let Some(token) = tokens.peek() else {
+            return Err(ParserError::EmptyError);
+        };
+        if let TokenType::C_SBR = token.token{
+            tokens.next();
+        }else {
+            return Err(ParserError::RuleError(token.line, token.column));
+        }
         return Ok((reg,num));
     }
     fn rule_word(tokens : &mut Peekable<Iter<Token>>) -> Result<Word,ParserError>{
@@ -587,19 +647,50 @@ impl Parser {
         let reg2 = Parser::rule_reg(tokens)?;
         return Ok(Instruction::RMOVE(reg1,reg2));
     }
-    fn rule_write(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+    fn rule_rwrite(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
         let word = Parser::rule_word(tokens)?;
         let reg = Parser::rule_reg(tokens)?;
-        return Ok(Instruction::WRITE(word,reg));
+        return Ok(Instruction::RWRITE(word,reg));
     }
-    fn rule_sload(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+    fn rule_load(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
         let addr_op = Parser::rule_addr_op(tokens)?;
-        return Ok(Instruction::SLOAD(addr_op));
+        return Ok(Instruction::LOAD(addr_op));
     }
-    fn rule_sloadb(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+    fn rule_loadb(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
         let addr_op = Parser::rule_addr_op(tokens)?;
         let size = Parser::rule_uint(tokens)?;
-        return Ok(Instruction::SLOADB(addr_op,size));
+        return Ok(Instruction::LOADB(addr_op,size));
+    }
+    fn rule_read(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let addr_op = Parser::rule_addr_op(tokens)?;
+        let size = Parser::rule_uint(tokens)?;
+        let offset = Parser::rule_uint(tokens)?;
+        return Ok(Instruction::READ(addr_op,size,offset));
+    }
+    fn rule_sread(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let size = Parser::rule_uint(tokens)?;
+        let offset = Parser::rule_uint(tokens)?;
+        return Ok(Instruction::SREAD(size,offset));
+    }
+    fn rule_write(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let word = Parser::rule_word(tokens)?;
+        let addr_op = Parser::rule_addr_op(tokens)?;
+        return Ok(Instruction::WRITE(word,addr_op));
+    }
+    fn rule_swrite(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let word = Parser::rule_word(tokens)?;
+        return Ok(Instruction::SWRITE(word));
+    }
+    fn rule_alloc(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let size = Parser::rule_uint(tokens)?;
+        return Ok(Instruction::ALLOC(size));
+    }
+    fn rule_free(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let addr_op = Parser::rule_addr_op(tokens)?;
+        return Ok(Instruction::FREE(addr_op));
+    }
+    fn rule_sfree(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        return Ok(Instruction::SFREE);
     }
     fn rule_either(tokens : &mut Peekable<Iter<Token>>) -> Result<Either<Word,Register>,ParserError> {
         let reg = Parser::rule_reg(tokens);

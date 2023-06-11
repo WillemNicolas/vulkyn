@@ -27,9 +27,16 @@ pub enum Instruction {
     SMOVE(Register),
     RCOPY(Register,Register),
     RMOVE(Register,Register),
-    WRITE(Word,Register),
-    SLOAD((Register,isize)),
-    SLOADB((Register,isize),usize),
+    RWRITE(Word,Register),
+    LOAD((Register,isize)),
+    LOADB((Register,isize),usize),
+    READ((Register,isize),usize,usize),
+    SREAD(usize,usize),
+    WRITE(Word,(Register,isize)),
+    SWRITE(Word),
+    ALLOC(usize),
+    FREE((Register,isize)),
+    SFREE,
 
     /* OPERATOR */
     // +
@@ -289,11 +296,11 @@ impl Vulkyn {
                 self.memory.registers.set(from, Word::init());
                 return State::OK;
             },
-            Instruction::WRITE(word, reg) => {
+            Instruction::RWRITE(word, reg) => {
                 self.memory.registers.set(reg, word);
                 return State::OK;
             },
-            Instruction::SLOAD((reg,offset)) => {
+            Instruction::LOAD((reg,offset)) => {
                 let idx = self.memory.registers.get(reg) + Word::I64(offset);
                 let Ok(word) = self.memory.stack_read(idx) else {
                     return State::SegmentationFault;
@@ -301,7 +308,7 @@ impl Vulkyn {
                 self.memory.push(word);
                 return State::OK;
             },
-            Instruction::SLOADB((reg,offset),size ) => {
+            Instruction::LOADB((reg,offset),size ) => {
                 let idx = self.memory.registers.get(reg) + Word::I64(offset);
                 let Ok(words) = self.memory.stack_read_range(idx,size) else {
                     return State::SegmentationFault;
@@ -309,6 +316,63 @@ impl Vulkyn {
                 self.memory.extend(words);
                 return State::OK;
             }
+            Instruction::READ((addr_reg,addr_offset), size, offset ) => {
+                let addr = self.memory.registers.get(addr_reg) + Word::I64(addr_offset);
+                let Ok(words) = self.memory.read(addr, size, offset) else {
+                    return State::SegmentationFault;
+                };
+                self.memory.extend(words);
+                return State::OK;
+            },
+            Instruction::SREAD(size, offset ) => {
+                let Ok(addr) = self.memory.pop() else {
+                    return State::StackUnderflow
+                };
+                let Ok(words) = self.memory.read(addr, size, offset) else {
+                    return State::SegmentationFault;
+                };
+                self.memory.extend(words);
+                return State::OK;
+            },
+            Instruction::WRITE(word,(addr_reg,addr_offset) ) => {
+                let addr = self.memory.registers.get(addr_reg) + Word::I64(addr_offset);
+                let Ok(_) = self.memory.write(word,addr) else {
+                    return State::SegmentationFault;
+                };
+                return State::OK;
+            },
+            Instruction::SWRITE(word) => {
+                let Ok(addr) = self.memory.pop() else {
+                    return State::StackUnderflow
+                };                
+                let Ok(_) = self.memory.write(word,addr) else {
+                    return State::SegmentationFault;
+                };
+                return State::OK;
+            },
+            Instruction::ALLOC(size) => {
+                let Ok(addr) = self.memory.alloc(size) else {
+                    return State::SegmentationFault;
+                };
+                self.memory.push(addr);
+                return State::OK;
+            },
+            Instruction::FREE((addr_reg,addr_offset) ) => {
+                let addr = self.memory.registers.get(addr_reg) + Word::I64(addr_offset);
+                let Ok(_) = self.memory.free(addr) else {
+                    return State::SegmentationFault;
+                };
+                return State::OK;
+            },
+            Instruction::SFREE => {
+                let Ok(addr) = self.memory.pop() else {
+                    return State::StackUnderflow
+                };
+                let Ok(_) = self.memory.free(addr) else {
+                    return State::SegmentationFault;
+                };
+                return State::OK;
+            },
             /* FLOW */
             Instruction::NOP => {},
             Instruction::EXIT => {},

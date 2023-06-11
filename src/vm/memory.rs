@@ -18,7 +18,6 @@ pub struct Memory {
     stack : Vec<Word>,
     heap : HashMap<Word,Box<Vec<Word>>>,
     pub stack_size : usize,
-    heap_size : usize,
     pub registers : Registers,
 }
 
@@ -28,7 +27,6 @@ impl<'vm> Memory {
             stack : Vec::new(),
             heap : HashMap::new(),
             stack_size : 0,
-            heap_size : 0,
             registers : Registers::init(),
         }
     }
@@ -104,11 +102,15 @@ impl<'vm> Memory {
     }
 
     /* HEAP ACCESS */
-    pub fn read(&mut self,idx:Word) -> Result<&Box<Vec<Word>>,MemoryError> {
+    pub fn read(&mut self,idx:Word,size:usize,offset:usize) -> Result<Vec<Word>,MemoryError> {
         let Some(word) = self.heap.get(&idx) else {
             return Err(MemoryError::HeapSegmentationFault);
         };
-        return Ok(word);
+        let word_size = word.len();
+        if offset + size > word_size {
+            return Err(MemoryError::HeapSegmentationFault);
+        }
+        return Ok(word[offset..offset + size].to_vec());
     }
 
     pub fn write(&mut self,word : Word,idx : Word) -> Result<Word,MemoryError> {
@@ -120,13 +122,17 @@ impl<'vm> Memory {
 
     pub fn alloc(&mut self,size:usize)  -> Result<Word,MemoryError>{
         let words = Box::new(vec![Word::init(); size]);
-        let idx = Word::U64(self.heap_size);
-        self.heap.insert(idx,words);
-        self.heap_size += 1;
-        return Ok(idx);
+        let addr = Word::U64(words.as_ptr() as usize);
+        self.heap.insert(addr,words);
+        return Ok(addr);
     }
 
-    pub fn free(&mut self,idx : Word)  -> Option<Box<Vec<Word>>> {
-        return self.heap.remove(&idx)
+    pub fn free(&mut self,idx : Word)  -> Result<(),MemoryError> {
+        let Some(word) = self.heap.get(&idx) else {
+            return Err(MemoryError::HeapSegmentationFault);
+        };
+        drop(word);
+        self.heap.remove(&idx);
+        return Ok(())
     }
 }

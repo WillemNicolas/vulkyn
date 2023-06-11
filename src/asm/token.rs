@@ -7,6 +7,14 @@ pub enum TokenType {
     INT(isize),
     FLOAT(f64),
     CHAR(char),
+    READ,
+    SREAD,
+    WRITE,
+    SWRITE,
+    ALLOC,
+    FREE,
+    SFREE,
+
     /* REGISTER */
     R1,
     R2,
@@ -25,9 +33,9 @@ pub enum TokenType {
     SMOVE,
     RCOPY,
     RMOVE,
-    WRITE,
-    SLOAD,
-    SLOADB,
+    RWRITE,
+    LOAD,
+    LOADB,
 
     /* OPERATOR */
     // +
@@ -154,16 +162,22 @@ pub fn match_token_type(src : &str) -> Option<TokenType> {
         "[" => Some(TokenType::O_SBR),
         "]" => Some(TokenType::C_SBR),
         /* MEMORY ACCESS */
-        "write" => Some(TokenType::WRITE),
+        "rwrite" => Some(TokenType::RWRITE),
         "push" => Some(TokenType::PUSH),
         "pop" => Some(TokenType::POP),
         "scopy" => Some(TokenType::SCOPY),
         "smove" => Some(TokenType::SMOVE),
         "rcopy" => Some(TokenType::RCOPY),
         "rmove" => Some(TokenType::RMOVE),
-        "sload" => Some(TokenType::SLOAD),
-        "sloadb" => Some(TokenType::SLOADB),
-
+        "load" => Some(TokenType::LOAD),
+        "loadb" => Some(TokenType::LOADB),
+        "read" => Some(TokenType::READ),
+        "sread" => Some(TokenType::SREAD),
+        "write" => Some(TokenType::WRITE),
+        "swrite" => Some(TokenType::SWRITE),
+        "alloc" => Some(TokenType::ALLOC),
+        "free" => Some(TokenType::FREE),
+        "sfree" => Some(TokenType::SFREE),
         /* OPERATOR */
         "add" => Some(TokenType::ADD),
         "radd" => Some(TokenType::RADD),

@@ -24,7 +24,6 @@ fn test_memory_heap() {
     let idx = memory.alloc(3);
     assert!(idx.is_ok());
     let idx = idx.unwrap();
-
-    dbg!(memory.read(idx));
+    dbg!(memory.read(idx,2,0));
 
 }
