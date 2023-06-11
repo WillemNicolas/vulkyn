@@ -1,9 +1,9 @@
-use std::{path::PathBuf, fs::File, collections::HashMap};
+use std::{path::PathBuf, fs::File};
 
 use serde::{Serialize, Deserialize};
 use crate::vm::memory::{Memory};
 
-use super::{word::Word, register::{Register, self}};
+use super::{word::Word, register::{Register}};
 
 #[derive(Debug,Clone,Serialize,Deserialize)]
 pub struct Program{
@@ -30,7 +30,7 @@ pub enum Instruction {
     WRITE(Word,Register),
     SLOAD((Register,isize)),
     SLOADB((Register,isize),usize),
-    
+
     /* OPERATOR */
     // +
     ADD,
