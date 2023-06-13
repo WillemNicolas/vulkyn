@@ -509,6 +509,86 @@ impl Parser {
             TokenType::NOT => {
                 return Ok(Instruction::NOT);
             }
+            TokenType::F2I => {
+                
+                return Ok(Instruction::F2I);
+            }            
+            TokenType::F2U => {
+                
+                return Ok(Instruction::F2U);
+            }            
+            TokenType::F2B => {
+                
+                return Ok(Instruction::F2B);
+            }
+            TokenType::F2C => {
+                
+                return Ok(Instruction::F2C);
+            }
+            TokenType::I2F => {
+                
+                return Ok(Instruction::I2F);
+            }
+            TokenType::I2U => {
+                
+                return Ok(Instruction::I2U);
+            }
+            TokenType::I2B => {
+                
+                return Ok(Instruction::I2B);
+            }
+            TokenType::I2C => {
+                
+                return Ok(Instruction::I2C);
+            }
+            TokenType::U2I => {
+                
+                return Ok(Instruction::U2I);
+            }
+            TokenType::U2F => {
+                
+                return Ok(Instruction::U2F);
+            }
+            TokenType::U2C => {
+                
+                return Ok(Instruction::U2C);
+            }
+            TokenType::U2B => {
+                
+                return Ok(Instruction::U2B);
+            }
+            TokenType::C2I => {
+                
+                return Ok(Instruction::C2I);
+            }
+            TokenType::C2F => {
+                
+                return Ok(Instruction::C2F);
+            }
+            TokenType::C2U => {
+                
+                return Ok(Instruction::C2U);
+            }
+            TokenType::C2B => {
+                
+                return Ok(Instruction::C2B);
+            }
+            TokenType::B2I => {
+                
+                return Ok(Instruction::B2I);
+            }
+            TokenType::B2F => {
+                
+                return Ok(Instruction::B2F);
+            }
+            TokenType::B2U => {
+                
+                return Ok(Instruction::B2U);
+            }
+            TokenType::B2C => {
+                
+                return Ok(Instruction::B2C);
+            }
             /* FLOW */
             TokenType::EXIT => {
                 return Ok(Instruction::EXIT);
@@ -531,6 +611,86 @@ impl Parser {
             TokenType::RNOT => {
                 let x = Parser::rule_either(tokens)?;
                 return Ok(Instruction::RNOT(x));
+            }            
+            TokenType::RF2I => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RF2I(x));
+            }            
+            TokenType::RF2U => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RF2U(x));
+            }            
+            TokenType::RF2B => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RF2B(x));
+            }
+            TokenType::RF2C => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RF2C(x));
+            }
+            TokenType::RI2F => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RI2F(x));
+            }
+            TokenType::RI2U => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RI2U(x));
+            }
+            TokenType::RI2B => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RI2B(x));
+            }
+            TokenType::RI2C => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RI2C(x));
+            }
+            TokenType::RU2I => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RU2I(x));
+            }
+            TokenType::RU2F => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RU2F(x));
+            }
+            TokenType::RU2C => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RU2C(x));
+            }
+            TokenType::RU2B => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RU2B(x));
+            }
+            TokenType::RC2I => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RC2I(x));
+            }
+            TokenType::RC2F => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RC2F(x));
+            }
+            TokenType::RC2U => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RC2U(x));
+            }
+            TokenType::RC2B => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RC2B(x));
+            }
+            TokenType::RB2I => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RB2I(x));
+            }
+            TokenType::RB2F => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RB2F(x));
+            }
+            TokenType::RB2U => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RB2U(x));
+            }
+            TokenType::RB2C => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RB2C(x));
             }
             _ => {
                 return Err(ParserError::RuleError(token.line, token.column));

@@ -33,6 +33,51 @@ impl Word {
             Word::BOOL(w) => w as usize,
         }
     }
+    pub fn to_u64(self) -> Self {
+        match self {
+            Word::U64(w) => self,
+            Word::I64(w) => Word::U64(w as usize),
+            Word::F64(w) => Word::U64(w as usize),
+            Word::CHAR(w) => Word::U64((w as u8) as usize),
+            Word::BOOL(w) =>Word::U64(w as usize),
+        }
+    }
+    pub fn to_f64(self) -> Self {
+        match self {
+            Word::U64(w) => Word::F64(w as f64),
+            Word::I64(w) => Word::F64(w as f64),
+            Word::F64(w) => self,
+            Word::CHAR(w) => Word::F64((w as u8) as f64),
+            Word::BOOL(w) =>Word::F64((w as usize) as f64),
+        }
+    }
+    pub fn to_i64(self) -> Self {
+        match self {
+            Word::U64(w) => Word::I64(w as isize),
+            Word::I64(w) => self,
+            Word::F64(w) => Word::I64(w as isize),
+            Word::CHAR(w) => Word::I64((w as u8) as isize),
+            Word::BOOL(w) =>Word::I64((w as usize) as isize),
+        }
+    }
+    pub fn to_char(self) -> Self {
+        match self {
+            Word::U64(w) => Word::CHAR((w as u8) as char),
+            Word::I64(w) => Word::CHAR((w as u8) as char),
+            Word::F64(w) => Word::CHAR((w as u8) as char),
+            Word::CHAR(w) => self,
+            Word::BOOL(w) => Word::CHAR((w as u8) as char),
+        }
+    }
+    pub fn to_bool(self) -> Self {
+        match self {
+            Word::U64(w) => Word::BOOL((w as u8) != 0),
+            Word::I64(w) => Word::BOOL((w as u8) != 0),
+            Word::F64(w) => Word::BOOL((w as u8)  != 0),
+            Word::CHAR(w) => Word::BOOL((w as u8)  != 0),
+            Word::BOOL(w) => self,
+        }
+    }
     pub fn and(&self, other: &Self) -> Self {
         return Word::BOOL(!self.is_zero() && !other.is_zero()); 
     }

@@ -101,7 +101,51 @@ pub enum Instruction {
     EGREAT,
     REGREAT(Either<Word,Register>,Either<Word,Register>),
 
+    // Conversion
+    F2I,
+    F2U,
+    F2B,
+    F2C,
+    RF2I(Either<Word,Register>),
+    RF2U(Either<Word,Register>),
+    RF2B(Either<Word,Register>),
+    RF2C(Either<Word,Register>),
 
+    I2F,
+    I2U,
+    I2B,
+    I2C,
+    RI2F(Either<Word,Register>),
+    RI2U(Either<Word,Register>),
+    RI2B(Either<Word,Register>),
+    RI2C(Either<Word,Register>),
+
+    U2I,
+    U2F,
+    U2C,
+    U2B,
+    RU2I(Either<Word,Register>),
+    RU2F(Either<Word,Register>),
+    RU2C(Either<Word,Register>),
+    RU2B(Either<Word,Register>),
+
+    C2I,
+    C2F,
+    C2U,
+    C2B,
+    RC2I(Either<Word,Register>),
+    RC2F(Either<Word,Register>),
+    RC2U(Either<Word,Register>),
+    RC2B(Either<Word,Register>),
+
+    B2I,
+    B2F,
+    B2U,
+    B2C,
+    RB2I(Either<Word,Register>),
+    RB2F(Either<Word,Register>),
+    RB2U(Either<Word,Register>),
+    RB2C(Either<Word,Register>),
     /* FLOW */
     EXIT,
     NOP,
@@ -261,6 +305,50 @@ impl Vulkyn {
                 => {
                 return self.function_operation(instruction);
             },
+            // Conversion
+            | Instruction::F2I
+                | Instruction::F2U
+                | Instruction::F2B
+                | Instruction::F2C
+                | Instruction::RF2I(_)
+                | Instruction::RF2U(_)
+                | Instruction::RF2B(_)
+                | Instruction::RF2C(_)
+                | Instruction::I2F
+                | Instruction::I2U
+                | Instruction::I2B
+                | Instruction::I2C
+                | Instruction::RI2F(_)
+                | Instruction::RI2U(_)
+                | Instruction::RI2B(_)
+                | Instruction::RI2C(_)
+                | Instruction::U2I
+                | Instruction::U2F
+                | Instruction::U2C
+                | Instruction::U2B
+                | Instruction::RU2I(_)
+                | Instruction::RU2F(_)
+                | Instruction::RU2C(_)
+                | Instruction::RU2B(_)
+                | Instruction::C2I
+                | Instruction::C2F
+                | Instruction::C2U
+                | Instruction::C2B
+                | Instruction::RC2I(_)
+                | Instruction::RC2F(_)
+                | Instruction::RC2U(_)
+                | Instruction::RC2B(_)
+                | Instruction::B2I
+                | Instruction::B2F
+                | Instruction::B2U
+                | Instruction::B2C
+                | Instruction::RB2I(_)
+                | Instruction::RB2F(_)
+                | Instruction::RB2U(_)
+                | Instruction::RB2C(_)
+                => {
+                    return self.conversion_operation(instruction);
+            }
             Instruction::PUSH(either) => {
                 self.memory.push(self.get_either(either));
                 return State::OK
@@ -756,6 +844,85 @@ impl Vulkyn {
                 if let Err(_) = self.memory.stack_clean(start,end){
                     return State::SegmentationFault
                 }
+            }
+            _ => {}
+        }
+        return State::OK
+    }
+
+    fn conversion_operation(&mut self,instruction : Instruction) -> State{
+        match instruction {
+            Instruction::F2I 
+                | Instruction::U2I
+                | Instruction::C2I
+                | Instruction::B2I 
+                => {
+                let Ok(word) = self.memory.pop() else {
+                    return State::StackUnderflow
+                };
+                self.memory.push(word.to_i64());
+            }
+            Instruction::F2U
+                | Instruction::I2U
+                | Instruction::C2U
+                | Instruction::B2U 
+                => {
+                let Ok(word) = self.memory.pop() else {
+                    return State::StackUnderflow
+                };
+                self.memory.push(word.to_u64());
+            }
+            Instruction::F2B 
+                | Instruction::I2B
+                | Instruction::C2B
+                | Instruction::U2B 
+                => {
+                let Ok(word) = self.memory.pop() else {
+                    return State::StackUnderflow
+                };
+                self.memory.push(word.to_bool());
+            }
+            Instruction::F2C
+                | Instruction::I2C
+                | Instruction::B2C
+                | Instruction::U2C 
+                 => {
+                let Ok(word) = self.memory.pop() else {
+                    return State::StackUnderflow
+                };
+                self.memory.push(word.to_char());
+            }
+            Instruction::RF2I(e) 
+                | Instruction::RC2I(e) 
+                | Instruction::RB2I(e) 
+                | Instruction::RU2I(e) 
+                => {
+                let word = self.get_either(e);
+                self.memory.push(word.to_i64());
+            }
+            Instruction::RF2U(e)
+                | Instruction::RC2U(e) 
+                | Instruction::RB2U(e) 
+                | Instruction::RI2U(e) 
+                 => {
+                let word = self.get_either(e);
+                self.memory.push(word.to_u64());
+            }
+            Instruction::RF2B(e) 
+                | Instruction::RC2B(e) 
+                | Instruction::RU2B(e) 
+                | Instruction::RI2B(e) 
+                 => {
+                let word = self.get_either(e);
+                self.memory.push(word.to_bool());
+            }
+            Instruction::RF2C(e) 
+                | Instruction::RB2C(e) 
+                | Instruction::RU2C(e) 
+                | Instruction::RI2C(e) 
+                 => {
+                let word = self.get_either(e);
+                self.memory.push(word.to_char());
             }
             _ => {}
         }
