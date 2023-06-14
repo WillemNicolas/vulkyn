@@ -33,7 +33,7 @@ pub enum Instruction {
     READ((Register,isize),usize,usize),
     SREAD(usize,usize),
     WRITE(Word,(Register,isize)),
-    SWRITE(Word),
+    SWRITE,
     ALLOC(usize),
     FREE((Register,isize)),
     SFREE,
@@ -146,6 +146,11 @@ pub enum Instruction {
     RB2F(Either<Word,Register>),
     RB2U(Either<Word,Register>),
     RB2C(Either<Word,Register>),
+    
+    // PRINT
+    DMP,
+    RDMP(Either<Word,Register>),
+
     /* FLOW */
     EXIT,
     NOP,
@@ -161,7 +166,7 @@ pub enum Instruction {
     RCALLP(Register,usize),
     RET(usize),
 }
-
+#[derive(Debug)]
 pub enum State {
     OK,
     StackOverflow,
@@ -179,7 +184,7 @@ const FLAG_SF: Word =  Word::U64(0x1  << 4);
 const FLAG_DZ: Word =  Word::U64(0x1  << 5);
 
 impl State {
-    fn flag(self) -> Word{
+    fn flag(&self) -> Word{
         match self {
             State::OK => FLAG_OK,
             State::StackOverflow => FLAG_ST_OF,
@@ -422,18 +427,21 @@ impl Vulkyn {
                 self.memory.extend(words);
                 return State::OK;
             },
-            Instruction::WRITE(word,(addr_reg,addr_offset) ) => {
-                let addr = self.memory.registers.get(addr_reg) + Word::I64(addr_offset);
-                let Ok(_) = self.memory.write(word,addr) else {
+            Instruction::WRITE(word,(reg,offset) ) => {
+                let addr = self.memory.registers.get(reg);
+                let Ok(_) = self.memory.write(word,addr,offset) else {
                     return State::SegmentationFault;
                 };
                 return State::OK;
             },
-            Instruction::SWRITE(word) => {
+            Instruction::SWRITE => {
                 let Ok(addr) = self.memory.pop() else {
                     return State::StackUnderflow
-                };                
-                let Ok(_) = self.memory.write(word,addr) else {
+                };
+                let Ok(word) = self.memory.pop() else {
+                    return State::StackUnderflow
+                };                 
+                let Ok(_) = self.memory.write(word,addr,0) else {
                     return State::SegmentationFault;
                 };
                 return State::OK;
@@ -461,6 +469,18 @@ impl Vulkyn {
                 };
                 return State::OK;
             },
+            Instruction::DMP => {
+                let Ok(word) = self.memory.pop() else {
+                    return State::StackUnderflow
+                };
+                print!("{}",word);
+                return State::OK;
+            }
+            Instruction::RDMP(e) => {
+                let word = self.get_either(e);
+                print!("{}",word);
+                return State::OK;
+            }
             /* FLOW */
             Instruction::NOP => {},
             Instruction::EXIT => {},
@@ -929,7 +949,6 @@ impl Vulkyn {
         return State::OK
     }
     fn exit(&self) {
-        dbg!(&self.memory);
         if (self.memory.registers.Fl & FLAG_OK) == FLAG_OK{
             println!("Successfuly exited program !")
         }
@@ -937,13 +956,17 @@ impl Vulkyn {
             println!("Error : state overflow")
         }
         if (self.memory.registers.Fl & FLAG_ST_UF) == FLAG_ST_UF{
-            println!("Error : state overflow")
+            println!("Error : state underflow")
         }
         if (self.memory.registers.Fl & FLAG_I_I) == FLAG_I_I{
             println!("Error : illegal instruction")
         }
+        if (self.memory.registers.Fl & FLAG_SF) == FLAG_SF{
+            println!("Error : segmentation fault")
+        }
         if (self.memory.registers.Fl & FLAG_DZ) == FLAG_DZ{
             println!("Error : Divizion per zero")
         }
+        dbg!(&self.memory);
     }
 }

@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use std::{ops::{BitAnd, Add, Sub, Mul, Div, Rem, BitOr, Shl, Shr, BitXor}, hash::{Hash, Hasher}};
+use std::{ops::{BitAnd, Add, Sub, Mul, Div, Rem, BitOr, Shl, Shr, BitXor}, hash::{Hash, Hasher}, fmt::Display};
 
 
 #[derive(Debug,Clone,Copy,Serialize,Deserialize)]
@@ -88,6 +88,18 @@ impl Word {
         return Word::BOOL(self.is_zero()); 
     }
 }
+impl Display for Word {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Word::U64(w) => w.fmt(f),
+            Word::I64(w) => w.fmt(f),
+            Word::F64(w) => w.fmt(f),
+            Word::CHAR(w) => w.fmt(f),
+            Word::BOOL(w) => w.fmt(f),
+        }
+    }
+}
+
 impl PartialEq for Word {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {

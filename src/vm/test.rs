@@ -1,5 +1,7 @@
 use std::path::PathBuf;
 
+use crate::vm::word::Word;
+
 use super::{vm::Vulkyn, memory::{self, Memory}};
 
 
@@ -24,6 +26,14 @@ fn test_memory_heap() {
     let idx = memory.alloc(3);
     assert!(idx.is_ok());
     let idx = idx.unwrap();
-    dbg!(memory.read(idx,2,0));
+    dbg!(idx);
+    let read1 = memory.read(idx,2,0);
+    assert!(read1.is_ok());
+    dbg!(&read1);
+    let write = memory.write(Word::CHAR('a'), idx,0);
+    assert!(write.is_ok());
+    let read2 = memory.read(idx,2,0);
+    assert!(read2.is_ok());
+    dbg!(&read2);
 
 }

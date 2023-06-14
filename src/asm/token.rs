@@ -145,6 +145,9 @@ pub enum TokenType {
     RB2U,
     RB2C,
 
+    DMP,
+    RDMP,
+
     /* FLOW */
     EXIT,
     NOP,
@@ -182,9 +185,20 @@ fn register(word:&str) -> Option<TokenType> {
     }
 } 
 pub fn match_token_type(src : &str) -> Option<TokenType> {
-    dbg!(&src);
     if let Ok(num) = src.parse::<usize>(){
         return Some(TokenType::UINT(num));
+    }
+    if src.starts_with("0x") {
+        if let Ok(num) = hex::decode(&src[2..]){
+            let mut bytes : [u8;8] = [0;8];
+            if num.len() > 8 {
+                return None;
+            }
+            for (i,byte) in num.iter().enumerate() {
+                bytes[i] = *byte;
+            }
+            return Some(TokenType::UINT(usize::from_le_bytes(bytes)));
+        }    
     }
     if let Ok(num) = src.parse::<isize>() {
         return Some(TokenType::INT(num));
@@ -304,6 +318,8 @@ pub fn match_token_type(src : &str) -> Option<TokenType> {
         "rb2f" => Some(TokenType::RB2F),
         "rb2u" => Some(TokenType::RB2U),
         "rb2c" => Some(TokenType::RB2C),
+        "dmp" => Some(TokenType::DMP),
+        "rdmp" => Some(TokenType::RDMP),
         /* FLOW */
         "exit" => Some(TokenType::EXIT),
         "nop" => Some(TokenType::NOP),

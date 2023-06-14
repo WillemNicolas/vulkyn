@@ -42,13 +42,16 @@ impl Vasm {
 
         let lexems = lexer::tokenize(&self.src);
         if lexems.is_err() {
-            panic!("{:#?}", lexems.unwrap());
+            dbg!(lexems);
+            return Err(())
         }
         let lexems = lexems.unwrap();
+        dbg!(&lexems);
         let mut parser = Parser::init(lexems);
         let instructions = parser.run();
         if instructions.is_err() {
-            panic!("{:#?}", instructions);
+            dbg!(instructions);
+            return Err(())
         }
 
         let instructions = instructions.unwrap();

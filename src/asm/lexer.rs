@@ -31,8 +31,10 @@ fn until_new_line(src : &str, cursor : usize) -> usize {
 }
 
 fn word(src : &str, cursor : usize) -> (usize,usize) {
-    if &src[cursor..cursor+1] == "\n" {
-        return (cursor,cursor+1)
+    if let Some(char) = &src[cursor..].chars().next() {
+        if *char == '\n' {
+            return (cursor,cursor+1)
+        }
     }
     let (idx,_) = src[cursor..].char_indices().find(|(idx,char)| {
         return char.is_ascii_whitespace() || *char == '\n';
@@ -51,9 +53,11 @@ pub fn tokenize(src : &str) -> Result<Vec<Token>,LexerError> {
 
     while cursor < src_size{
         cursor = eat_whitespace(src, cursor);
+        if cursor == src_size {
+            break;
+        }
         let (start_word,end_word) = word(src, cursor);
         let mut end_word = end_word;
-        dbg!(&src[start_word..end_word]);
         if &src[start_word..end_word] == "\n"{
             line += 1;
             column = 0;
@@ -89,7 +93,6 @@ pub fn tokenize(src : &str) -> Result<Vec<Token>,LexerError> {
             line,
             column
         };
-        dbg!(&token);
         column = end_word - start_column_cursor;
         res.push(token);
         cursor = end_word;

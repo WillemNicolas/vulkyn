@@ -373,8 +373,13 @@ impl Parser {
             return Err(ParserError::RuleError(token.line, token.column));
         }
 
-        let num = Parser::rule_int(tokens)?;
-
+        let num = {
+            if let Ok(inum) = Parser::rule_int(tokens) {
+                inum
+            }else {
+                Parser::rule_uint(tokens)? as isize
+            }
+        };
         let Some(token) = tokens.peek() else {
             return Err(ParserError::EmptyError);
         };
@@ -510,84 +515,67 @@ impl Parser {
                 return Ok(Instruction::NOT);
             }
             TokenType::F2I => {
-                
                 return Ok(Instruction::F2I);
             }            
             TokenType::F2U => {
-                
                 return Ok(Instruction::F2U);
             }            
             TokenType::F2B => {
-                
                 return Ok(Instruction::F2B);
             }
             TokenType::F2C => {
-                
                 return Ok(Instruction::F2C);
             }
             TokenType::I2F => {
-                
                 return Ok(Instruction::I2F);
             }
             TokenType::I2U => {
-                
                 return Ok(Instruction::I2U);
             }
             TokenType::I2B => {
-                
                 return Ok(Instruction::I2B);
             }
             TokenType::I2C => {
-                
                 return Ok(Instruction::I2C);
             }
             TokenType::U2I => {
-                
                 return Ok(Instruction::U2I);
             }
             TokenType::U2F => {
-                
                 return Ok(Instruction::U2F);
             }
             TokenType::U2C => {
-                
                 return Ok(Instruction::U2C);
             }
             TokenType::U2B => {
-                
                 return Ok(Instruction::U2B);
             }
             TokenType::C2I => {
-                
                 return Ok(Instruction::C2I);
             }
             TokenType::C2F => {
-                
                 return Ok(Instruction::C2F);
             }
             TokenType::C2U => {
-                
                 return Ok(Instruction::C2U);
             }
             TokenType::C2B => {
-                
                 return Ok(Instruction::C2B);
             }
             TokenType::B2I => {
-                
                 return Ok(Instruction::B2I);
             }
             TokenType::B2F => {
-                
                 return Ok(Instruction::B2F);
             }
             TokenType::B2U => {
-                
                 return Ok(Instruction::B2U);
             }
             TokenType::B2C => {
-                
                 return Ok(Instruction::B2C);
+            }
+            TokenType::DMP => {
+                return Ok(Instruction::DMP);
             }
             /* FLOW */
             TokenType::EXIT => {
@@ -691,6 +679,10 @@ impl Parser {
             TokenType::RB2C => {
                 let x = Parser::rule_either(tokens)?;
                 return Ok(Instruction::RB2C(x));
+            }
+            TokenType::RDMP => {
+                let x = Parser::rule_either(tokens)?;
+                return Ok(Instruction::RDMP(x));
             }
             _ => {
                 return Err(ParserError::RuleError(token.line, token.column));
@@ -838,8 +830,7 @@ impl Parser {
         return Ok(Instruction::WRITE(word,addr_op));
     }
     fn rule_swrite(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
-        let word = Parser::rule_word(tokens)?;
-        return Ok(Instruction::SWRITE(word));
+        return Ok(Instruction::SWRITE);
     }
     fn rule_alloc(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
         let size = Parser::rule_uint(tokens)?;
