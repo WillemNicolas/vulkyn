@@ -4,10 +4,15 @@ use bincode::{de, Options};
 
 use crate::{asm::{ parser::Parser}, vm::vm::{Instruction, Program}};
 
-use super::lexer;
+use super::{lexer, parser};
 
 
-
+#[derive(Debug)]
+pub enum VasmError {
+    LexerError(lexer::LexerError),
+    ParserError(parser::ParserError),
+    Error,
+}
 
 pub struct Vasm {
     src_path : PathBuf, 
@@ -38,20 +43,18 @@ impl Vasm {
     }
 
 
-    pub fn assemble(&self) -> Result<(),()>{
+    pub fn assemble(&self) -> Result<(),VasmError>{
 
         let lexems = lexer::tokenize(&self.src);
         if lexems.is_err() {
-            dbg!(lexems);
-            return Err(())
+            return Err(VasmError::LexerError(lexems.unwrap_err()))
         }
         let lexems = lexems.unwrap();
-        dbg!(&lexems);
+
         let mut parser = Parser::init(lexems);
         let instructions = parser.run();
         if instructions.is_err() {
-            dbg!(instructions);
-            return Err(())
+            return Err(VasmError::ParserError(instructions.unwrap_err()))
         }
 
         let instructions = instructions.unwrap();
@@ -62,7 +65,7 @@ impl Vasm {
         let file = File::create(&self.out_path).unwrap();
         let res = bincode::serialize_into(file, &program);
         if res.is_err(){
-            return Err(());
+            return Err(VasmError::Error);
         }
         return Ok(());
     }

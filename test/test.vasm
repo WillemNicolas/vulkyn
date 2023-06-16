@@ -2,21 +2,22 @@
     alloc 12
     scopy r1
     write 'h' [r1]
+    ; test commentaire
     write 'e' [r1 | 1]
-    write 'l' [r1 | 2]
+    write 'l' [r1 |2]
     write 'l' [r1 | 3]
-    write 'o' [r1 | 4]
-    write '_' [r1 | 5]
-    write 'w' [r1 | 6]
+    write 'o' [r1| 4]
+    write '\x20' [r1 | 5]
+    write 'w' [r1|6]
     write 'o' [r1 | 7]
-    write 'r' [r1 | 8]
+    write 'r' [r1 | 8];gfcjgvmhbkjhbl,
     write 'l' [r1 | 9]
     write 'd' [r1 | 10]
-    write '!' [r1 | 11]
-    push 10
-    u2c
-    smove r2
-    read [r1] 12 0
+    write '\n' [r1 | 11]
+    ;push 10
+    ;u2c
+    ;smove r2
+    readd [r1] 12 0 ;jhgcvkhvkhgljvhblk
     dmp
     dmp
     dmp
@@ -29,6 +30,6 @@
     dmp
     dmp
     dmp
-    rdmp r2
+    ;rdmp r2
     exit
     

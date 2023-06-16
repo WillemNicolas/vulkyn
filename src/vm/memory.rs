@@ -1,7 +1,6 @@
 
-use std::{collections::{HashSet, HashMap}, borrow::BorrowMut};
+use std::{collections::{HashMap}};
 
-use serde::{Serialize, Deserialize};
 
 use super::{word::Word, register::{Registers, Register}};
 
@@ -55,7 +54,7 @@ impl Memory{
         let some_word = self.stack.pop();
         match some_word {
             Some(word) => {
-                self.stack_size -= 1;
+                self.stack_size = self.stack.len();
                 if self.stack_size == 0 {
                     self.registers.set(Register::Ts, Word::U64(0));
                 }else {

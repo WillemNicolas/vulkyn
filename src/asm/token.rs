@@ -7,8 +7,12 @@ pub enum TokenType {
     INT(isize),
     FLOAT(f64),
     CHAR(char),
-    READ,
-    SREAD,
+    TRUE,
+    FALSE,
+    READU,
+    SREADU,
+    READD,
+    SREADD,
     WRITE,
     SWRITE,
     ALLOC,
@@ -206,7 +210,38 @@ pub fn match_token_type(src : &str) -> Option<TokenType> {
     if let Ok(num) = src.parse::<f64>() {
         return Some(TokenType::FLOAT(num));
     }
-    if src.starts_with("'") && src.ends_with("'") && src.len() == 3 {
+
+    if src.starts_with("'") && src.ends_with("'") {
+        if src.chars().nth(1).unwrap() == '\\' && src.len() > 3 {
+            match src.chars().nth(2).unwrap() {
+                'n' => {
+                    return Some(TokenType::CHAR('\n'));
+                }
+                'r' => {
+                    return Some(TokenType::CHAR('\r'));
+                }
+                't' => {
+                    return Some(TokenType::CHAR('\t'));
+                }
+                '\'' => {
+                    return Some(TokenType::CHAR('\''));
+                }
+                '\\' => {
+                    return Some(TokenType::CHAR('\\'));
+                }
+                '\"' => {
+                    return Some(TokenType::CHAR('\"'));
+                }
+                'x' => {
+                    let Ok(code) = u8::from_str_radix(&src[3..5],16) else {
+                        return None
+                    };
+
+                    return Some(TokenType::CHAR(code as char));
+                }
+                _ => return None
+            }
+        }
         return Some(TokenType::CHAR(src.chars().nth(1).unwrap()));
     }
     if src.starts_with("%") {
@@ -220,6 +255,8 @@ pub fn match_token_type(src : &str) -> Option<TokenType> {
         "|" => Some(TokenType::BAR),
         "[" => Some(TokenType::O_SBR),
         "]" => Some(TokenType::C_SBR),
+        "true" => Some(TokenType::TRUE),
+        "false" => Some(TokenType::FALSE),
         /* MEMORY ACCESS */
         "rwrite" => Some(TokenType::RWRITE),
         "push" => Some(TokenType::PUSH),
@@ -230,8 +267,10 @@ pub fn match_token_type(src : &str) -> Option<TokenType> {
         "rmove" => Some(TokenType::RMOVE),
         "load" => Some(TokenType::LOAD),
         "loadb" => Some(TokenType::LOADB),
-        "read" => Some(TokenType::READ),
-        "sread" => Some(TokenType::SREAD),
+        "readu" => Some(TokenType::READU),
+        "sreadu" => Some(TokenType::SREADU),
+        "readd" => Some(TokenType::READD),
+        "sreadd" => Some(TokenType::SREADD),
         "write" => Some(TokenType::WRITE),
         "swrite" => Some(TokenType::SWRITE),
         "alloc" => Some(TokenType::ALLOC),

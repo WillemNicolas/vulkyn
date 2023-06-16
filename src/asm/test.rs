@@ -35,7 +35,9 @@ fn test_parser() {
 }
 #[test]
 fn test_asm_compile() {
-    Vasm::build(test_file("test.vasm")).unwrap().assemble();
+    let res = Vasm::build(test_file("test.vasm")).unwrap().assemble();
+    dbg!(&res);
+    assert!(res.is_ok());
 }
 
 #[test]

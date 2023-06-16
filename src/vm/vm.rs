@@ -30,8 +30,10 @@ pub enum Instruction {
     RWRITE(Word,Register),
     LOAD((Register,isize)),
     LOADB((Register,isize),usize),
-    READ((Register,isize),usize,usize),
-    SREAD(usize,usize),
+    READU((Register,isize),usize,usize),
+    READD((Register,isize),usize,usize),
+    SREADU(usize,usize),
+    SREADD(usize,usize),
     WRITE(Word,(Register,isize)),
     SWRITE,
     ALLOC(usize),
@@ -409,7 +411,7 @@ impl Vulkyn {
                 self.memory.extend(words);
                 return State::OK;
             }
-            Instruction::READ((addr_reg,addr_offset), size, offset ) => {
+            Instruction::READU((addr_reg,addr_offset), size, offset ) => {
                 let addr = self.memory.registers.get(addr_reg) + Word::I64(addr_offset);
                 let Ok(words) = self.memory.read(addr, size, offset) else {
                     return State::SegmentationFault;
@@ -417,13 +419,34 @@ impl Vulkyn {
                 self.memory.extend(words);
                 return State::OK;
             },
-            Instruction::SREAD(size, offset ) => {
+            Instruction::READD((addr_reg,addr_offset), size, offset ) => {
+                let addr = self.memory.registers.get(addr_reg) + Word::I64(addr_offset);
+                let Ok(mut words) = self.memory.read(addr, size, offset) else {
+                    return State::SegmentationFault;
+                };
+                &words.reverse();
+                self.memory.extend(words);
+                return State::OK;
+            },
+            Instruction::SREADU(size, offset ) => {
                 let Ok(addr) = self.memory.pop() else {
                     return State::StackUnderflow
                 };
                 let Ok(words) = self.memory.read(addr, size, offset) else {
                     return State::SegmentationFault;
                 };
+                self.memory.extend(words);
+                return State::OK;
+            },
+
+            Instruction::SREADD(size, offset ) => {
+                let Ok(addr) = self.memory.pop() else {
+                    return State::StackUnderflow
+                };
+                let Ok(mut words) = self.memory.read(addr, size, offset) else {
+                    return State::SegmentationFault;
+                };
+                &words.reverse();
                 self.memory.extend(words);
                 return State::OK;
             },

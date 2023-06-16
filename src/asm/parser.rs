@@ -103,15 +103,29 @@ impl Parser {
                         
                     } 
                 }
-                TokenType::READ => {
-                    let some_inst = Parser::rule_read(&mut tokens);
+                TokenType::READU => {
+                    let some_inst = Parser::rule_readu(&mut tokens);
                     if let Ok(inst) = some_inst {
                         res.push(inst);
                         
                     } 
                 }
-                TokenType::SREAD => {
-                    let some_inst = Parser::rule_sread(&mut tokens);
+                TokenType::SREADU => {
+                    let some_inst = Parser::rule_sreadu(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                },
+                TokenType::READD => {
+                    let some_inst = Parser::rule_readd(&mut tokens);
+                    if let Ok(inst) = some_inst {
+                        res.push(inst);
+                        
+                    } 
+                }
+                TokenType::SREADD => {
+                    let some_inst = Parser::rule_sreadd(&mut tokens);
                     if let Ok(inst) = some_inst {
                         res.push(inst);
                         
@@ -331,6 +345,20 @@ impl Parser {
         }
         return Err(ParserError::EmptyError);
     }
+    fn rule_bool(tokens : &mut Peekable<Iter<Token>>) -> Result<bool,ParserError>{
+        if let Some(token) = tokens.peek() {
+            if let TokenType::TRUE= token.token {
+                tokens.next();
+                return Ok(true);
+            }
+            if let TokenType::FALSE= token.token {
+                tokens.next();
+                return Ok(false);
+            }
+            return Err(ParserError::RuleError(token.line, token.column))
+        }
+        return Err(ParserError::EmptyError);
+    }
     fn rule_int(tokens : &mut Peekable<Iter<Token>>) -> Result<isize,ParserError>{
         if let Some(token) = tokens.peek() {
             if let TokenType::INT(num) = token.token {
@@ -391,6 +419,9 @@ impl Parser {
         return Ok((reg,num));
     }
     fn rule_word(tokens : &mut Peekable<Iter<Token>>) -> Result<Word,ParserError>{
+        if let Ok(num) = Parser::rule_bool(tokens){
+            return Ok(Word::BOOL(num));
+        }
         if let Ok(num) = Parser::rule_uint(tokens){
             return Ok(Word::U64(num));
         }        
@@ -813,16 +844,27 @@ impl Parser {
         let size = Parser::rule_uint(tokens)?;
         return Ok(Instruction::LOADB(addr_op,size));
     }
-    fn rule_read(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+    fn rule_readu(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
         let addr_op = Parser::rule_addr_op(tokens)?;
         let size = Parser::rule_uint(tokens)?;
         let offset = Parser::rule_uint(tokens)?;
-        return Ok(Instruction::READ(addr_op,size,offset));
+        return Ok(Instruction::READU(addr_op,size,offset));
     }
-    fn rule_sread(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+    fn rule_sreadu(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
         let size = Parser::rule_uint(tokens)?;
         let offset = Parser::rule_uint(tokens)?;
-        return Ok(Instruction::SREAD(size,offset));
+        return Ok(Instruction::SREADU(size,offset));
+    }
+    fn rule_readd(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let addr_op = Parser::rule_addr_op(tokens)?;
+        let size = Parser::rule_uint(tokens)?;
+        let offset = Parser::rule_uint(tokens)?;
+        return Ok(Instruction::READD(addr_op,size,offset));
+    }
+    fn rule_sreadd(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
+        let size = Parser::rule_uint(tokens)?;
+        let offset = Parser::rule_uint(tokens)?;
+        return Ok(Instruction::SREADD(size,offset));
     }
     fn rule_write(tokens : &mut Peekable<Iter<Token>>) -> Result<Instruction,ParserError>{
         let word = Parser::rule_word(tokens)?;
