@@ -990,6 +990,6 @@ impl Vulkyn {
         if (self.memory.registers.Fl & FLAG_DZ) == FLAG_DZ{
             println!("Error : Divizion per zero")
         }
-        dbg!(&self.memory);
+        //dbg!(&self.memory);
     }
 }
