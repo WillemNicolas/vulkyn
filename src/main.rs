@@ -25,7 +25,7 @@ fn main() {
         }
         Err(ErrorArg::NotValidVasmFile)
     });
-    args.arg("disassemble", "dvasm", "dassemble the given vk file",
+    args.arg("disassemble", "dvasm", "disassemble the given vk file",
     |s| {
         if s.ends_with(".vk") {
             return Ok(Arg::VkFile(s))
