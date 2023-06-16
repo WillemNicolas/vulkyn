@@ -18,8 +18,17 @@ To use the virtual machine, follow these steps:
     ```
   - Build  :
     ```console
-      cargo build
+      cargo build --release
     ```
+  - Run the vm :
+    ```console
+      target/debug/vulkyn [OPTIONS]
+    ```
+    [OPTIONS] :
+      - --assemble, -vasm : assemble a given vasm file
+      - --disassemble, -dvasm : dissaemble a given vk file
+      - --run, -r : run the vm on a given vk file
+      - --help,-h : print help
 ## Assembly Language
 
 The virtual machine uses a simple assembly language that consists of instructions and operands. Instructions are represented as strings of text, and operands are values or registers that the instructions operate on.
