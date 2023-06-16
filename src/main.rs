@@ -17,7 +17,7 @@ enum ErrorArg{
 }
 
 fn main() {
-    let mut args:Parser<Arg, ErrorArg> = Parser::build("This project is a simple implementation of a stack-based virtual machine (VM) written in Rust. The VM includes a stack, a heap, and several registers, and it interprets instructions written in its own assembly language.");
+    let mut args:Parser<Arg, ErrorArg> = Parser::build("This project is a simple implementation of a stack-based virtual machine (VM) written in Rust.\nThe VM includes a stack, a heap, and several registers, and it interprets instructions written in its own assembly language.");
     args.arg("assemble", "vasm", "assemble the given vasm file",
     |s| {
         if s.ends_with(".vasm") {
