@@ -206,8 +206,10 @@ pub struct Vulkyn {
 impl Vulkyn {
 
     pub fn build(program : &PathBuf) -> Result<Self,()>{
-        let program = bincode::deserialize_from::<File,Program>
-            (File::open(program).unwrap());
+        let Ok(file) = File::open(program) else {
+            return Err(());
+        };
+        let program = bincode::deserialize_from::<File,Program>(file);
         if program.is_err(){
             return Err(());
         }
