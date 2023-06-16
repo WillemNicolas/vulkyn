@@ -18,14 +18,14 @@ enum ErrorArg{
 
 fn main() {
     let mut args:Parser<Arg, ErrorArg> = Parser::build("This project is a simple implementation of a stack-based virtual machine (VM) written in Rust. The VM includes a stack, a heap, and several registers, and it interprets instructions written in its own assembly language.");
-    args.arg("assemble", "asm", "assemble the given vasm file",
+    args.arg("assemble", "vasm", "assemble the given vasm file",
     |s| {
         if s.ends_with(".vasm") {
             return Ok(Arg::VasmFile(s))
         }
         Err(ErrorArg::NotValidVasmFile)
     });
-    args.arg("disassemble", "dasm", "dassemble the given vk file",
+    args.arg("disassemble", "dvasm", "dassemble the given vk file",
     |s| {
         if s.ends_with(".vk") {
             return Ok(Arg::VkFile(s))
